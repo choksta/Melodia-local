@@ -29,6 +29,7 @@ import com.lin0721.linmusic.core.songlike.SongLikeRepository
 import com.lin0721.linmusic.feature.playlist.data.PlaylistRepository
 import com.lin0721.linmusic.core.player.data.PlaybackRepository
 import com.lin0721.linmusic.core.player.PlaybackController
+import com.lin0721.linmusic.core.player.PlayMode
 import com.lin0721.linmusic.core.player.QueueItem
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -86,6 +87,10 @@ class PlaylistViewModel(
     private var loadJob: Job? = null
     // 起播/下载前补全全部曲目的任务，切换歌单时需一并取消，避免补全完成后误播上一个歌单
     private var fullTrackJob: Job? = null
+    // 大歌单起播后把剩余曲目补进队列的后台任务；切换歌单时必须取消，否则旧歌单的曲目会被追加到新队列
+    private var tailAppendJob: Job? = null
+    // tailAppendJob 运行期间，滚动触发的分批补全要让路，避免两边重复请求同一批 id 又各自写回 uiState
+    private var isAppendingTail = false
 
     private val _uiState = MutableStateFlow<PlaylistUiState>(PlaylistUiState.Loading)
     val uiState: StateFlow<PlaylistUiState> = _uiState.asStateFlow()
@@ -165,6 +170,7 @@ class PlaylistViewModel(
         allRecommendedTracks = emptyList()
         loadJob?.cancel() // 取消之前的加载任务
         fullTrackJob?.cancel()
+        cancelTailAppend()
         if (id == -2L) {
             _historyRecommendState.update { it.copy(selectedDate = "最近一周") }
             loadJob = viewModelScope.launch {
@@ -253,6 +259,7 @@ class PlaylistViewModel(
 
     // 歌单曲目超过服务端截断阈值时，滚动到底部触发分批补全
     fun loadMoreTracks() {
+        if (isAppendingTail) return
         val current = _uiState.value as? PlaylistUiState.Success ?: return
         if (!current.hasMoreTracks || current.isLoadingMoreTracks) return
         val nextIds = current.pendingTrackIds.take(TRACK_PAGE_SIZE)
@@ -284,6 +291,8 @@ class PlaylistViewModel(
     // 按批追加曲目直到 stopWhen 满足或者已加载全部；已成功的批次无论后面是否失败都写回 uiState，
     // 成功返回完整列表，失败返回 null 并提示 toast
     private suspend fun loadTracksUntil(stopWhen: (List<Track>) -> Boolean): List<Track>? {
+        // 起播后追队列的补全任务与这里抢同一批 id，先停掉它，由本次补全统一接管
+        cancelTailAppend()
         val current = _uiState.value as? PlaylistUiState.Success ?: return null
         val playlistId = current.playlist.id
         val loadedTracks = mutableListOf<Track>().apply { addAll(current.playlist.tracks) }
@@ -394,24 +403,97 @@ class PlaylistViewModel(
         }
     }
 
-    // 播放全部：需要时先补全全部曲目，shuffle 为真则打乱后起播
+    // 播放全部：shuffle 为真则打乱后起播
     fun playAll(shuffle: Boolean) {
-        withAllTracks { tracks ->
-            val ordered = if (shuffle) tracks.shuffled() else tracks
-            viewModelScope.launch {
-                // 离线时从第一首可播放的歌曲起播
-                val unplayable = offlinePlayability.unplayableIds(ordered.map { it.id })
-                ordered.firstOrNull { it.id !in unplayable }?.let { playSongInList(it, ordered) }
-            }
+        val state = _uiState.value as? PlaylistUiState.Success ?: return
+        val tracks = state.playlist.tracks
+        if (tracks.isEmpty()) {
+            // 详情里一首曲目都没下发（只剩 trackIds）时没有可起播的元数据，退回先补全再起播
+            if (state.hasMoreTracks) withAllTracks { all -> all.firstOrNull()?.let { playSongInList(it, all) } }
+            return
         }
+        // 离线时从第一首可播放的歌曲起播
+        val unplayable = unplayableIds.value
+        val firstPlayable = tracks.firstOrNull { it.id !in unplayable } ?: tracks.first()
+        startPlaybackFromLoaded(state, firstPlayable, shuffle)
     }
 
     // 点击某首歌起播：队列必须包含歌单全部曲目，而不只是已滚动加载的部分
     fun playTrackInPlaylist(track: Track) {
         // 离线时置灰曲目点击无响应
         if (track.id in unplayableIds.value) return
-        withAllTracks { tracks -> playSongInList(track, tracks) }
+        val state = _uiState.value as? PlaylistUiState.Success ?: return
+        if (state.playlist.tracks.none { it.id == track.id }) {
+            // 目标曲目还没补全到本地（从列表外定位过来），只能先拉到目标曲目再起播
+            withAllTracks { tracks -> playSongInList(track, tracks) }
+            return
+        }
+        startPlaybackFromLoaded(state, track, shuffle = false)
     }
+
+    // 用手上已加载的曲目立即建立队列起播。
+    // 旧实现在这里等 song/detail 把所有剩余批次拉完才起播：每批 1000 首、响应约 3MB，
+    // 「我喜欢的音乐」这种上千首的歌单要先干等好几秒才有声音，短歌单则一批都不需要补全——
+    // 这就是只有这个歌单明显卡顿的原因。现在剩余曲目改由 scheduleTailAppend 在后台按序补到队列尾部。
+    private fun startPlaybackFromLoaded(state: PlaylistUiState.Success, startTrack: Track, shuffle: Boolean) {
+        val playlist = state.playlist
+        val loaded = if (shuffle) playlist.tracks.shuffled() else playlist.tracks
+        if (loaded.isEmpty()) return
+        val queueItems = loaded.map { it.toQueueItem() }
+        val startIndex = loaded.indexOfFirst { it.id == startTrack.id }.coerceAtLeast(0)
+        val source = PlaySource(
+            kind = if (isAlbumMode) PlaySource.Kind.ALBUM else PlaySource.Kind.PLAYLIST,
+            id = playlist.id,
+            name = playlist.name,
+            coverUrl = playlist.coverImgUrl
+        )
+        playerManager.playQueue(queueItems, startIndex, playlist.name, source)
+        if (state.hasMoreTracks) scheduleTailAppend(playlist.id)
+    }
+
+    // 后台把剩余曲目分批补全并追加到队列尾部：已起播不受影响，切换歌单/换队列立即停止。
+    // 补全失败静默退出——播放已经开始，不该因为尾部元数据拉取失败打断用户
+    private fun scheduleTailAppend(playlistId: Long) {
+        if (isAppendingTail) return
+        isAppendingTail = true
+        tailAppendJob = viewModelScope.launch {
+            try {
+                while (true) {
+                    val state = _uiState.value as? PlaylistUiState.Success ?: break
+                    if (state.playlist.id != playlistId) break
+                    // 用户已经换了播放队列（点了别的歌单或别的歌），不要再把本歌单的曲目塞进队列
+                    if (playerManager.playSource.value?.id != playlistId) break
+                    val chunk = state.pendingTrackIds.take(TRACK_PAGE_SIZE)
+                    if (chunk.isEmpty()) break
+                    val tracks = playlistRepository.loadMoreTracks(chunk).first().getOrNull() ?: break
+                    _uiState.update { current ->
+                        if (current is PlaylistUiState.Success && current.playlist.id == playlistId) {
+                            current.copy(
+                                playlist = current.playlist.withLoadedTracks(chunk, tracks),
+                                pendingTrackIds = current.pendingTrackIds.drop(chunk.size)
+                            )
+                        } else current
+                    }
+                    if (tracks.isEmpty()) continue
+                    // 随机模式下尾批也要打乱，否则追加的部分会保持原顺序排到最后
+                    val items = tracks.map { it.toQueueItem() }
+                    playerManager.appendToQueue(
+                        if (playerManager.playMode.value == PlayMode.SHUFFLE) items.shuffled() else items
+                    )
+                }
+            } finally {
+                isAppendingTail = false
+            }
+        }
+    }
+
+    private fun cancelTailAppend() {
+        tailAppendJob?.cancel()
+        tailAppendJob = null
+        isAppendingTail = false
+    }
+
+    private fun Track.toQueueItem() = QueueItem(id, name, ar.joinToString { it.name }, al.picUrl)
 
     // 全部加入下一首播放
     fun addAllTracksToPlayNext() {
@@ -474,11 +556,14 @@ class PlaylistViewModel(
                     songLikeRepository.syncLikedSongIds(newLiked)
                 }
             )
-            // 停留在“我喜欢的音乐”歌单时需重新拉取列表，使被取消红心的歌曲从当前页消失
+            // 停留在“我喜欢的音乐”歌单时需让被取消红心的歌曲从当前页消失；
+            // 本地摘掉这一行即可，不必整页重拉详情（上千首的响应会让页面先闪加载圈再丢滚动位置）
             val successState = _uiState.value as? PlaylistUiState.Success
             val profile = userPreferences.userProfile.first()
-            if (successState != null && profile != null && successState.playlist.id == profile.uid) {
-                loadPlaylist(successState.playlist.id, isAlbumMode)
+            if (successState != null && profile != null && successState.playlist.id == profile.uid &&
+                songId !in songLikeRepository.likedSongIds.value
+            ) {
+                dropTracksFromState(successState.playlist.id, setOf(songId))
             }
         }
     }
@@ -911,10 +996,12 @@ class PlaylistViewModel(
                         _toastEvent.emit(if (isLike) "已添加到我喜欢的音乐" else "已从我喜欢的音乐中移除")
 
                         val successState = _uiState.value as? PlaylistUiState.Success
-                        if (successState != null) {
+                        if (successState != null && !isLike) {
                             val profile = userPreferences.userProfile.first()
+                            // 正停留在我喜欢的音乐：取消红心只需把这一行从列表摘掉，
+                            // 旧实现是整页重拉详情（上千首的响应），会先闪一下加载圈、再丢掉滚动位置
                             if (profile != null && successState.playlist.id == profile.uid) {
-                                loadPlaylist(successState.playlist.id, isAlbumMode)
+                                dropTracksFromState(successState.playlist.id, setOf(songId))
                             }
                         }
                     },

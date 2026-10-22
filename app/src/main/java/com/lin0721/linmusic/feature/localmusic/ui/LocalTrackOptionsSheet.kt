@@ -49,6 +49,8 @@ import com.lin0721.linmusic.core.ui.theme.NeteaseRed
 import com.lin0721.linmusic.core.ui.theme.RadiusCompact
 import com.lin0721.linmusic.core.ui.theme.TextGray
 import kotlinx.coroutines.launch
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 本地曲目操作面板
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,7 +110,7 @@ fun LocalTrackOptionsSheet(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = track.title,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -126,7 +128,7 @@ fun LocalTrackOptionsSheet(
             }
 
             HorizontalDivider(
-                color = Color.White.copy(alpha = 0.08f),
+                color = SurfaceOverlay.copy(alpha = 0.08f),
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = MelodiaSpacing.sm)
             )
 
@@ -164,7 +166,7 @@ fun LocalTrackOptionsSheet(
 private fun SheetOptionRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
-    tint: Color = Color.White.copy(alpha = 0.7f),
+    tint: Color = SurfaceOverlay.copy(alpha = 0.7f),
     onClick: () -> Unit
 ) {
     Row(

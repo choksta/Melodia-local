@@ -74,7 +74,7 @@ fun CloudSongRow(
         Column(modifier = Modifier.padding(start = MelodiaSpacing.sm).weight(1f)) {
             Text(
                 text = song.name,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 14.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

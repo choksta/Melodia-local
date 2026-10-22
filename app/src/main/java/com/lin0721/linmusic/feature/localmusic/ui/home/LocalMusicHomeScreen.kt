@@ -85,6 +85,7 @@ import com.lin0721.linmusic.feature.localmusic.ui.components.LocalTrackRow
 import com.lin0721.linmusic.feature.localmusic.ui.playlist.LocalPlaylistCover
 import com.lin0721.linmusic.feature.localmusic.ui.playlist.NewPlaylistTile
 import org.koin.androidx.compose.koinViewModel
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private const val RECENT_TRACK_COUNT = 5
 private const val SHELF_ITEM_COUNT = 10
@@ -338,7 +339,7 @@ private fun StatsCard(library: LocalLibraryIndex, onPlay: () -> Unit, onShuffle:
                 fontSize = 12.sp
             )
         }
-        MelodiaIconButton(onClick = onShuffle, containerColor = Color.White.copy(alpha = 0.12f), modifier = Modifier.size(44.dp)) {
+        MelodiaIconButton(onClick = onShuffle, containerColor = SurfaceOverlay.copy(alpha = 0.12f), modifier = Modifier.size(44.dp)) {
             Icon(Icons.Rounded.Shuffle, contentDescription = "随机播放", tint = Color.White, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.width(MelodiaSpacing.sm))

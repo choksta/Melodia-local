@@ -43,6 +43,8 @@ import com.lin0721.linmusic.core.ui.components.MelodiaDragHandle
 import com.lin0721.linmusic.core.ui.theme.BottomSheetShape
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import org.koin.compose.koinInject
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 只展示物理输出类型，蓝牙 LE/USB/有线各算一类
 internal val RELEVANT_DEVICE_TYPES = setOf(
@@ -216,12 +218,12 @@ fun OutputDeviceSheet(
                     val rowBackground = if (isSelected) {
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                     } else {
-                        Color.White.copy(alpha = 0.05f)
+                        SurfaceOverlay.copy(alpha = 0.05f)
                     }
                     val badgeBackground = if (isSelected) {
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                     } else {
-                        Color.White.copy(alpha = 0.08f)
+                        SurfaceOverlay.copy(alpha = 0.08f)
                     }
                     val iconTint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -285,7 +287,7 @@ fun OutputDeviceSheet(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.08f)),
+                            .background(SurfaceOverlay.copy(alpha = 0.08f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(

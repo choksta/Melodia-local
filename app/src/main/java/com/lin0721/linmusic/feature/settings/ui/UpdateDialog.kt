@@ -22,6 +22,7 @@ import com.lin0721.linmusic.core.ui.theme.NeteaseRed
 import com.lin0721.linmusic.core.ui.theme.SurfaceDark
 import com.lin0721.linmusic.core.ui.theme.TextGray
 import com.lin0721.linmusic.core.update.domain.UpdateInfo
+import androidx.compose.material3.MaterialTheme
 
 private const val TAG = "UpdateDialog"
 
@@ -39,7 +40,7 @@ fun UpdateDialog(
         onDismissRequest = onHide,
         title = {
             val channelSuffix = if (info.isPrerelease) "（测试版）" else ""
-            Text("发现新版本 ${info.versionName}$channelSuffix", color = Color.White, fontWeight = FontWeight.Bold)
+            Text("发现新版本 ${info.versionName}$channelSuffix", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
         },
         text = {
             Text(
@@ -73,7 +74,7 @@ fun UpdateDialog(
                 }
                 Spacer(modifier = Modifier.width(4.dp))
                 MelodiaTextButton(onClick = onDismiss) {
-                    Text("稍后", color = Color.White)
+                    Text("稍后", color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         },

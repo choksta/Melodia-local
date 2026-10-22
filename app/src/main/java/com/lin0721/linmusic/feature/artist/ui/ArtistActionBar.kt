@@ -29,6 +29,8 @@ import com.lin0721.linmusic.core.ui.interaction.pressScale
 import com.lin0721.linmusic.core.ui.theme.MelodiaPress
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.PillRadius
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 操作控制行：粉丝数、关注状态、更多菜单与随机/全部播放
 @Composable
@@ -62,7 +64,7 @@ fun ArtistActionBar(
         ) {
             Text(
                 text = "共有 ${formatFansCount(fansCount)} 位听众",
-                color = Color.White.copy(alpha = 0.6f),
+                color = SurfaceOverlay.copy(alpha = 0.6f),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -78,7 +80,7 @@ fun ArtistActionBar(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+                        .border(1.dp, SurfaceOverlay.copy(alpha = 0.2f), CircleShape)
                 )
 
                 Spacer(Modifier.width(12.dp))
@@ -92,7 +94,7 @@ fun ArtistActionBar(
                             onClick = onFollowClick
                         )
                         .border(
-                            border = if (isFollowed) BorderStroke(1.dp, Color.White.copy(alpha = 0.4f))
+                            border = if (isFollowed) BorderStroke(1.dp, SurfaceOverlay.copy(alpha = 0.4f))
                             else BorderStroke(0.dp, Color.Transparent),
                             shape = RoundedCornerShape(PillRadius)
                         )

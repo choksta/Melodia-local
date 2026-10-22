@@ -46,6 +46,8 @@ import com.lin0721.linmusic.core.ui.components.MelodiaSwitch
 import com.lin0721.linmusic.core.ui.theme.BottomSheetShape
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.uiSpring
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 底部导航栏自定义弹层：支持拖拽排序、显隐切换、数量限制拦截及仅图标模式
 @OptIn(ExperimentalMaterial3Api::class)
@@ -160,7 +162,7 @@ fun BottomBarCustomizationSheet(
             }
 
             HorizontalDivider(
-                color = Color.White.copy(alpha = 0.08f),
+                color = SurfaceOverlay.copy(alpha = 0.08f),
                 modifier = Modifier.padding(vertical = MelodiaSpacing.xs)
             )
 

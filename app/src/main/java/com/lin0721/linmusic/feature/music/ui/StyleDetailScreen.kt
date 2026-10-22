@@ -53,6 +53,7 @@ import com.lin0721.linmusic.core.ui.theme.TextGray
 import com.lin0721.linmusic.feature.home.ui.ErrorContent
 import com.lin0721.linmusic.feature.music.domain.StyleSort
 import org.koin.androidx.compose.koinViewModel
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 距离列表底部还剩几项时加载下一页曲目
 private const val SONG_LOAD_MORE_THRESHOLD = 8
@@ -256,7 +257,7 @@ private fun ActionRow(data: StyleDetailData, onPlayAll: () -> Unit, onPlayFavour
                 .size(48.dp)
                 .pressable(MelodiaPress.Icon, enabled = canPlay) { onPlayAll() }
                 .clip(CircleShape)
-                .background(if (canPlay) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.12f)),
+                .background(if (canPlay) MaterialTheme.colorScheme.primary else SurfaceOverlay.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(

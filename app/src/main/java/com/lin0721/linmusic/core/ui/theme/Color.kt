@@ -1,5 +1,7 @@
 package com.lin0721.linmusic.core.ui.theme
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -73,32 +75,75 @@ fun Color.saturateIfChromatic(amount: Float): Color {
     return saturate(amount * weight)
 }
 
-val BackgroundDark = Color(0xFF121212)
-val SurfaceDark = Color(0xFF282828)
-val SurfaceLight = Color(0xFF3E3E3E)
-val TextGray = Color(0xFFB3B3B3)
+// ======================= 明暗两套基础调色板 =======================
+// 这里只放纯色值，供 Theme.kt 构造 ColorScheme 使用（顶层 val 不能是 @Composable）。
+// 组件侧请继续用下方与旧名同名的常量：它们已改为按主题返回两套取值之一，
+// 因此历史代码无需改动即可跟随明暗切换。
 
-val NeteaseRed = Color(0xFFC20C0C)
-val GradientStart = Color(0xFF3a1515)
-val BackgroundBlack = Color(0xFF0a0a0a)
+val DarkBackground = Color(0xFF121212)
+val DarkSurface = Color(0xFF282828)
+val DarkSurfaceVariant = Color(0xFF3E3E3E)
+val DarkTextSecondary = Color(0xFFB3B3B3)
+val DarkOnSurface = Color(0xFFFFFFFF)
+val DarkBackgroundBlack = Color(0xFF0A0A0A)
+val DarkGradientStart = Color(0xFF3A1515)
+val DarkCoverPlaceholder = Color(0xFF2C2C2C)
+
+val LightBackground = Color(0xFFFFFFFF)
+val LightSurface = Color(0xFFF4F4F7)
+val LightSurfaceVariant = Color(0xFFE7E7EC)
+val LightTextSecondary = Color(0xFF5C5C66)
+val LightOnSurface = Color(0xFF121216)
+val LightGradientStart = Color(0xFFFBEDED)
+val LightCoverPlaceholder = Color(0xFFECECEF)
+
+// 旧名兼容层：按当前主题取对应值。必须用于 @Composable 上下文，
+// 非 Composable 位置（remember 块、drawBehind、顶层 val）请直接用 Dark*/Light* 具名色值
+val BackgroundDark: Color
+    @Composable @ReadOnlyComposable get() = if (LocalIsDarkTheme.current) DarkBackground else LightBackground
+
+val SurfaceDark: Color
+    @Composable @ReadOnlyComposable get() = if (LocalIsDarkTheme.current) DarkSurface else LightSurface
+
+val SurfaceLight: Color
+    @Composable @ReadOnlyComposable get() = if (LocalIsDarkTheme.current) DarkSurfaceVariant else LightSurfaceVariant
+
+val TextGray: Color
+    @Composable @ReadOnlyComposable get() = if (LocalIsDarkTheme.current) DarkTextSecondary else LightTextSecondary
+
+val BackgroundBlack: Color
+    @Composable @ReadOnlyComposable get() = if (LocalIsDarkTheme.current) DarkBackgroundBlack else LightBackground
+
+val GradientStart: Color
+    @Composable @ReadOnlyComposable get() = if (LocalIsDarkTheme.current) DarkGradientStart else LightGradientStart
+
+val CoverPlaceholderDark: Color
+    @Composable @ReadOnlyComposable get() = if (LocalIsDarkTheme.current) DarkCoverPlaceholder else LightCoverPlaceholder
 
 // 底栏选中项的药丸指示器底色
-val NavPillSelected = Color(0xFF383A4A)
+val NavPillSelected: Color
+    @Composable @ReadOnlyComposable get() = if (LocalIsDarkTheme.current) Color(0xFF383A4A) else Color(0xFFE8EAF3)
 
-// 筛选药丸未选中态底色。取白 10% 叠在顶栏渐变上的等效不透明色
-val FilterPillInactive = Color(0xFF332B2B)
+// 筛选药丸未选中态底色。深色下取白 10% 叠在顶栏渐变上的等效不透明色，浅色下取红调浅灰
+val FilterPillInactive: Color
+    @Composable @ReadOnlyComposable get() = if (LocalIsDarkTheme.current) Color(0xFF332B2B) else Color(0xFFF1E9E9)
 
-// 全局 Toast 底色
+// 全局 Toast 底色：两种主题下都做成深色小胶囊，保证白字可读
 val ToastBackground = Color(0xFF2E2E2E)
+
+// 叠在表面上的低透明度遮罩（卡片底、分割线、按压反馈）。
+// 深色主题下用白，浅色主题下必须换成黑，否则白底上的白色遮罩完全不可见
+val SurfaceOverlay: Color
+    @Composable @ReadOnlyComposable get() = if (LocalIsDarkTheme.current) Color.White else Color.Black
+
+val NeteaseRed = Color(0xFFC20C0C)
 
 // 网页登录容器底色，与网页自身背景一致以避免键盘弹出时闪屏
 val WebLoginBackground = Color(0xFFF5F5F7)
 
-// 封面取色未命中缓存时的兜底背景色，迷你播放器与全屏播放器共用以保证配色一致
+// 封面取色未命中缓存时的兜底背景色，迷你播放器与全屏播放器共用以保证配色一致。
+// 播放页保持沉浸深色（封面取色本身偏暗），因此两种主题下都取深色
 val FallbackBase = Color(0xFF333333)
-
-// 歌单/歌手页在取色完成前的初始底色
-val CoverPlaceholderDark = Color(0xFF2C2C2C)
 
 // 定时关闭中的剩余时间告警色
 val TimerWarningRed = Color(0xFFFF5252)

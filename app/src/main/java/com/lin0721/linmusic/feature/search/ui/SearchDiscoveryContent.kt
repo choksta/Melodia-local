@@ -63,6 +63,7 @@ import com.lin0721.linmusic.core.ui.theme.uiTween
 import com.lin0721.linmusic.feature.search.domain.HotSearch
 import com.lin0721.linmusic.feature.search.domain.PlaylistTag
 import java.util.Locale
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private val tagFallbackColors = listOf(
     Color(0xFF1E3264),
@@ -180,7 +181,7 @@ private fun FeaturedHotCard(
         baseColor = if (coverUrl != null) extractBaseColorFromUrl(context, coverUrl) else FallbackBase
     }
     val animatedBase by animateColorAsState(baseColor, uiTween(500), label = "featured_hot_base")
-    val secondaryText = Color.White.copy(alpha = 0.72f)
+    val secondaryText = SurfaceOverlay.copy(alpha = 0.72f)
 
     Row(
         modifier = Modifier
@@ -208,7 +209,7 @@ private fun FeaturedHotCard(
                 )
             } else {
                 Box(
-                    modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.12f)),
+                    modifier = Modifier.fillMaxSize().background(SurfaceOverlay.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -229,7 +230,7 @@ private fun FeaturedHotCard(
             )
             Text(
                 text = hot.keyword,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -425,7 +426,7 @@ private fun PlaylistTagCard(
         }
         Text(
             text = tag.name,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = if (large) 20.sp else 15.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,

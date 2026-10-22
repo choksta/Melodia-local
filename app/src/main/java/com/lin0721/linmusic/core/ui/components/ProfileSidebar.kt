@@ -34,6 +34,8 @@ import com.lin0721.linmusic.core.ui.theme.NeteaseRed
 import com.lin0721.linmusic.core.ui.theme.TextGray
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.PillRadiusLarge
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 
  // 侧边栏
@@ -85,7 +87,7 @@ fun ProfileSidebar(
                     text = userProfile.nickname,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -99,7 +101,7 @@ fun ProfileSidebar(
 
         // 极细分割线
         HorizontalDivider(
-            color = Color.White.copy(alpha = 0.1f),
+            color = SurfaceOverlay.copy(alpha = 0.1f),
             thickness = 1.dp,
             modifier = Modifier.padding(horizontal = 20.dp)
         )
@@ -212,7 +214,7 @@ private fun SidebarMenuItem(
         Spacer(modifier = Modifier.width(20.dp))
         Text(
             text = title,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 16.sp,
             fontWeight = FontWeight.Normal,
             letterSpacing = 0.5.sp, // 稍微拉开字间距

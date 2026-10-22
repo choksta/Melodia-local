@@ -60,6 +60,7 @@ import com.lin0721.linmusic.core.ui.theme.RadiusCompact
 import com.lin0721.linmusic.core.ui.theme.PillRadius
 import com.lin0721.linmusic.core.ui.theme.uiSpring
 import com.lin0721.linmusic.core.ui.theme.uiTween
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // ────────────────────────────────────────────────────────────────────────────
 // 分类筛选胶囊行：默认（未筛选）展示全部胶囊；选中某个胶囊后仅保留该胶囊，
@@ -115,14 +116,14 @@ fun LibraryFilterPillsRow(
                         .animateItem(fadeInSpec, placementSpec, fadeOutSpec)
                         .pressable(MelodiaPress.Pill) { onClear() }
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.1f))
+                        .background(SurfaceOverlay.copy(alpha = 0.1f))
                         .size(36.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "清除筛选",
-                        tint = Color.LightGray,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -131,12 +132,12 @@ fun LibraryFilterPillsRow(
         items(visibleFilters, key = { it.first }) { (filter, label) ->
             val isSelected = filter == selectedFilter
             val bgColor by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.1f),
+                targetValue = if (isSelected) MaterialTheme.colorScheme.primary else SurfaceOverlay.copy(alpha = 0.1f),
                 animationSpec = uiTween(220),
                 label = "pill_bg"
             )
             val contentColor by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.LightGray,
+                targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                 animationSpec = uiTween(220),
                 label = "pill_content"
             )
@@ -163,12 +164,12 @@ fun LibraryFilterPillsRow(
             items(ownerFilters, key = { "owner_${it.first}" }) { (ownerFilter, label) ->
                 val isSelected = ownerFilter == selectedPlaylistOwnerFilter
                 val bgColor by animateColorAsState(
-                    targetValue = if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.1f),
+                    targetValue = if (isSelected) MaterialTheme.colorScheme.primary else SurfaceOverlay.copy(alpha = 0.1f),
                     animationSpec = uiTween(220),
                     label = "owner_pill_bg"
                 )
                 val contentColor by animateColorAsState(
-                    targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.LightGray,
+                    targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                     animationSpec = uiTween(220),
                     label = "owner_pill_content"
                 )
@@ -199,13 +200,13 @@ fun LibraryFilterPillsRow(
                         .height(36.dp)
                         .pressable(MelodiaPress.Pill) { onLocalMusicClick() }
                         .clip(RoundedCornerShape(PillRadius))
-                        .background(Color.White.copy(alpha = 0.1f))
+                        .background(SurfaceOverlay.copy(alpha = 0.1f))
                         .padding(horizontal = 18.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "本地音乐",
-                        color = Color.LightGray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp
                     )
                 }

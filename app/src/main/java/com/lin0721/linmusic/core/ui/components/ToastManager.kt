@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import com.lin0721.linmusic.core.ui.theme.ToastBackground
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.PillRadius
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 object ToastManager {
     private val _toastFlow = MutableSharedFlow<String>(extraBufferCapacity = 64)
@@ -41,7 +43,7 @@ fun CustomToast(message: String) {
             .heightIn(min = 40.dp)
             .clip(RoundedCornerShape(PillRadius))
             .background(ToastBackground)
-            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(PillRadius))
+            .border(1.dp, SurfaceOverlay.copy(alpha = 0.12f), RoundedCornerShape(PillRadius))
             .padding(horizontal = MelodiaSpacing.md, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
@@ -65,7 +67,7 @@ fun CustomToast(message: String) {
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = message,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium
         )

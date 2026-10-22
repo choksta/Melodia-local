@@ -36,6 +36,7 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaWindowSizeClass
 import com.lin0721.linmusic.core.ui.theme.RadiusCompact
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.feature.recent.domain.RecentPlaylist
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 紧凑横条列表，不带标题；手机 2 列 4 行、平板竖屏 3 列 3 行、平板横屏 4 列 2 行
 // 手机竖排 4 行，压低行高，避免首屏被这一块占满
@@ -107,7 +108,7 @@ private fun RecentPlayRow(
             .height(rowHeight)
             .pressable(MelodiaPress.Card) { onClick() }
             .clip(RoundedCornerShape(RadiusCompact))
-            .background(Color.White.copy(alpha = 0.1f)),
+            .background(SurfaceOverlay.copy(alpha = 0.1f)),
         verticalAlignment = Alignment.CenterVertically
     ) {
         SubcomposeAsyncImage(

@@ -22,6 +22,7 @@ import com.lin0721.linmusic.core.ui.interaction.pressable
 import com.lin0721.linmusic.core.ui.theme.MelodiaPress
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.PillRadius
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 受控的横向筛选药丸组：Library 的分类过滤、Home 的内容筛选共用
 @Composable
@@ -44,13 +45,13 @@ fun FilterChipsRow(
                     .height(36.dp)
                     .pressable(MelodiaPress.Pill) { onSelected(index) }
                     .clip(RoundedCornerShape(PillRadius))
-                    .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.1f))
+                    .background(if (isSelected) MaterialTheme.colorScheme.primary else SurfaceOverlay.copy(alpha = 0.1f))
                     .padding(horizontal = 18.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = items[index],
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.LightGray,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 14.sp
                 )
             }

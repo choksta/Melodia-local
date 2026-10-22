@@ -38,6 +38,7 @@ import com.lin0721.linmusic.core.ui.theme.uiExit
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import org.koin.compose.koinInject
+import androidx.compose.material3.MaterialTheme
 
 // 网易登录页"手机号登录"按钮用内联 style="width: Nvh; height: Mvh" 按视口高度算宽高
 private const val LOGIN_BUTTON_FIX_JS = """
@@ -105,7 +106,7 @@ fun WebViewLoginScreen(
                         text = "安全授权登录",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 },
                 navigationIcon = {

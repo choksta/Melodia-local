@@ -74,6 +74,7 @@ import com.lin0721.linmusic.feature.localmusic.domain.LocalTrack
 import com.lin0721.linmusic.feature.localmusic.domain.queueSongId
 import com.lin0721.linmusic.feature.player.ui.formatTime
 import org.koin.compose.koinInject
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 @Composable
 fun rememberLocalCoverUrl(sourceUri: Uri?): String? {
@@ -188,7 +189,7 @@ fun LocalPlayShuffleButtons(
         MelodiaButton(
             onClick = onShuffle,
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White.copy(alpha = 0.14f),
+                containerColor = SurfaceOverlay.copy(alpha = 0.14f),
                 contentColor = Color.White
             ),
             modifier = Modifier.weight(1f)

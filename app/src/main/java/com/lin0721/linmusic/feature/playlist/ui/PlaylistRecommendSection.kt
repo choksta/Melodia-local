@@ -25,6 +25,8 @@ import com.lin0721.linmusic.core.ui.components.SongRowData
 import com.lin0721.linmusic.core.ui.interaction.pressable
 import com.lin0721.linmusic.core.ui.theme.MelodiaPress
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // ────────────────────────────────────────────────────────────────────────────
 // 推荐歌曲板块（标题行 + 可一键加入歌单的推荐列表）
@@ -66,7 +68,7 @@ fun LazyListScope.playlistRecommendItems(
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
                             .size(22.dp)
-                            .background(Color.White.copy(alpha = 0.1f), CircleShape)
+                            .background(SurfaceOverlay.copy(alpha = 0.1f), CircleShape)
                             .padding(MelodiaSpacing.xxs)
                     )
                 }

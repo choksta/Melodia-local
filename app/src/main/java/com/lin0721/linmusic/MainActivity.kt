@@ -37,6 +37,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.android.inject
 import org.koin.core.context.GlobalContext
+import androidx.compose.foundation.isSystemInDarkTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -72,11 +73,7 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             window.colorMode = ActivityInfo.COLOR_MODE_WIDE_COLOR_GAMUT
         }
-        // App 全局强制暗色主题，系统栏样式固定按暗色处理，不跟随系统亮暗色
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
-        )
+        // 系统栏样式随主题实时切换，改到 setContent 内按 isDark 应用（见下）
         requestNotificationPermissionIfNeeded()
         handleLaunchIntent(intent)
 
@@ -102,8 +99,32 @@ class MainActivity : ComponentActivity() {
             val uiAnimationsEnabled by settingsPreferences.uiAnimationsEnabled.collectAsState(initial = true)
             val uiMotion = remember { UiMotion() }
             LaunchedEffect(uiAnimationsEnabled) { uiMotion.enabled = uiAnimationsEnabled }
+
+            // 主题模式：system 跟随系统，light/dark 为手动锁定
+            val themeMode by settingsPreferences.themeMode
+                .collectAsState(initial = SettingsPreferences.THEME_MODE_SYSTEM)
+            val isDark = when (themeMode) {
+                SettingsPreferences.THEME_MODE_LIGHT -> false
+                SettingsPreferences.THEME_MODE_DARK -> true
+                else -> isSystemInDarkTheme()
+            }
+            // 浅色主题下状态栏/导航栏图标要转成深色，否则白图标压在白色背景上看不见
+            LaunchedEffect(isDark) {
+                enableEdgeToEdge(
+                    statusBarStyle = if (isDark) {
+                        SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    } else {
+                        SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                    },
+                    navigationBarStyle = if (isDark) {
+                        SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    } else {
+                        SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                    }
+                )
+            }
             CompositionLocalProvider(LocalUiMotion provides uiMotion) {
-                MelodiaTheme {
+                MelodiaTheme(darkTheme = isDark) {
                     MelodiaApp()
                 }
             }

@@ -26,6 +26,8 @@ import com.lin0721.linmusic.core.ui.theme.InfoCardRadius
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.NeteaseRed
 import com.lin0721.linmusic.core.ui.theme.TextGray
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // mini 播放栏上方的通用状态横幅
 @Composable
@@ -48,7 +50,7 @@ fun MiniStatusBanner(
             .padding(horizontal = MelodiaSpacing.sm)
             .padding(bottom = MelodiaSpacing.xs)
             .clip(RoundedCornerShape(InfoCardRadius))
-            .border(0.5.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(InfoCardRadius))
+            .border(0.5.dp, SurfaceOverlay.copy(alpha = 0.08f), RoundedCornerShape(InfoCardRadius))
             .background(BackgroundDark)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = MelodiaSpacing.md, vertical = MelodiaSpacing.sm)
@@ -64,7 +66,7 @@ fun MiniStatusBanner(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,

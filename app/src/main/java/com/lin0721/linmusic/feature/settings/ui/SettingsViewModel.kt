@@ -132,6 +132,8 @@ class SettingsViewModel(
 
     val uiScalePercent = settingsPreferences.uiScalePercent.asState(UiScale.DEFAULT_PERCENT)
 
+    val themeMode = settingsPreferences.themeMode.asState(SettingsPreferences.THEME_MODE_SYSTEM)
+
     val uiAnimationsEnabled = settingsPreferences.uiAnimationsEnabled.asState(true)
 
     val floatingLyricStyle = settingsPreferences.floatingLyricStyle.asState(FloatingLyricStyle(fontSizeSp = 14, backgroundAlpha = 70))
@@ -381,6 +383,8 @@ class SettingsViewModel(
     fun updateTabletImmersiveMode(enabled: Boolean) = launchSave { settingsPreferences.saveTabletImmersiveMode(enabled) }
 
     fun updateUiScalePercent(percent: Int) = launchSave { settingsPreferences.saveUiScalePercent(percent) }
+
+    fun updateThemeMode(mode: String) = launchSave { settingsPreferences.saveThemeMode(mode) }
 
     fun updateUiAnimationsEnabled(enabled: Boolean) = launchSave { settingsPreferences.saveUiAnimationsEnabled(enabled) }
 

@@ -42,6 +42,8 @@ internal fun RecognitionWaveform(
     showPendingSlots: Boolean = true,
     barColor: Color = Color.White
 ) {
+    // SurfaceLight 已改为按主题取值，Canvas 的绘制 lambda 不是 Composable 上下文，先在此取值
+    val pendingBarColor = SurfaceLight
     Canvas(modifier = modifier) {
         val slots = RecognitionSession.LEVEL_COUNT
         val slotWidth = size.width / slots
@@ -79,7 +81,7 @@ internal fun RecognitionWaveform(
             val recorded = index < levels.size
             val height = if (recorded) maxBarHeight * levelToFraction(levels[index]) else pendingHeight
             val color = when {
-                !recorded -> SurfaceLight
+                !recorded -> pendingBarColor
                 highlight == WaveformHighlight.Bars && highlightRange != null && index in highlightRange -> NeteaseRed
                 else -> barColor
             }

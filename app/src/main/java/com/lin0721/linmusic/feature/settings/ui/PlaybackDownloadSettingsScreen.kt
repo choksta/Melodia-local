@@ -34,6 +34,7 @@ import com.lin0721.linmusic.core.player.CrossfadePolicy
 import com.lin0721.linmusic.feature.player.ui.LyricCapsuleSlider
 import com.lin0721.linmusic.core.ui.components.ToastManager
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private fun resolveDisplayPath(context: android.content.Context, uriString: String?): String {
     if (uriString.isNullOrBlank()) {
@@ -111,21 +112,21 @@ fun PlaybackDownloadSettingsView(viewModel: SettingsViewModel) {
                     checked = autoPlayNext,
                     onCheckedChange = { viewModel.updateAutoPlayNext(it) }
                 )
-                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                 SettingsSwitchRow(
                     title = "与其他应用同时播放",
                     subtitle = "开启后不被其他应用打断播放",
                     checked = playWithOtherApps,
                     onCheckedChange = { viewModel.updatePlayWithOtherApps(it) }
                 )
-                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                 SettingsSwitchRow(
                     title = "外部音视频停止后自动恢复",
                     subtitle = "被其他音视频打断暂停后，在对方停止播放时尝试自动继续",
                     checked = resumeAfterExternalInterruption,
                     onCheckedChange = { viewModel.updateResumeAfterExternalInterruption(it) }
                 )
-                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                 SettingsSwitchRow(
                     title = "切歌淡入淡出",
                     subtitle = "歌曲临近结束时与下一首交叠过渡，手动切歌不触发",
@@ -171,7 +172,7 @@ fun PlaybackDownloadSettingsView(viewModel: SettingsViewModel) {
                     checked = streamCacheEnabled,
                     onCheckedChange = { viewModel.updateStreamCacheEnabled(it) }
                 )
-                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                 SettingsRow(
                     title = "下载目录",
                     subtitle = downloadFolderSubtitle,
@@ -180,7 +181,7 @@ fun PlaybackDownloadSettingsView(viewModel: SettingsViewModel) {
                         folderPickerLauncher.launch(initialUri)
                     }
                 )
-                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                 SettingsSwitchRow(
                     title = "内嵌歌词",
                     subtitle = "下载歌曲与边听边存时将逐字歌词内嵌写入音频文件",
@@ -188,7 +189,7 @@ fun PlaybackDownloadSettingsView(viewModel: SettingsViewModel) {
                     onCheckedChange = { viewModel.updateDownloadLyricsEnabled(it) }
                 )
                 if (!downloadFolderUri.isNullOrBlank()) {
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                     SettingsRow(
                         title = "恢复默认下载目录",
                         subtitle = "改回 Music/Melodia",

@@ -101,7 +101,7 @@ fun CloudMatchSheet(
         ) {
             Text(
                 text = "重新匹配「${overlay.song.name}」",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp,
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = MelodiaSpacing.sm)
             )
@@ -166,7 +166,7 @@ fun CloudMatchSheet(
     if (confirmTarget != null) {
         AlertDialog(
             onDismissRequest = { if (!overlay.isMatching) onCancelConfirm() },
-            title = { Text("确认匹配", color = Color.White, fontWeight = FontWeight.Bold) },
+            title = { Text("确认匹配", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
                     "确定要把「${overlay.song.name}」关联到「${confirmTarget.name}」吗？",
@@ -185,7 +185,7 @@ fun CloudMatchSheet(
             },
             dismissButton = {
                 MelodiaTextButton(onClick = onCancelConfirm, enabled = !overlay.isMatching) {
-                    Text("取消", color = Color.White)
+                    Text("取消", color = MaterialTheme.colorScheme.onSurface)
                 }
             },
             containerColor = SurfaceDark,
@@ -214,7 +214,7 @@ private fun MatchCandidateRow(track: Track, onClick: () -> Unit) {
         Column(modifier = Modifier.padding(start = MelodiaSpacing.sm).weight(1f)) {
             Text(
                 text = track.name,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 13.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

@@ -83,6 +83,11 @@ class SettingsPreferences(
         private val KEY_TABLET_IMMERSIVE_MODE = booleanPreferencesKey("tablet_immersive_mode")
         // 界面缩放百分比，默认 100
         private val KEY_UI_SCALE_PERCENT = intPreferencesKey("ui_scale_percent")
+        // 界面明暗主题，默认跟随系统；取值 system / light / dark
+        private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
+        const val THEME_MODE_SYSTEM = "system"
+        const val THEME_MODE_LIGHT = "light"
+        const val THEME_MODE_DARK = "dark"
         const val PLAYER_PAGE_MODE_AUTO = "auto"
         const val PLAYER_PAGE_MODE_FULLSCREEN = "fullscreen"
         const val PLAYER_PAGE_MODE_SIDE = "side"
@@ -487,6 +492,20 @@ class SettingsPreferences(
     suspend fun saveUiScalePercent(percent: Int) {
         dataStore.edit { prefs ->
             prefs[KEY_UI_SCALE_PERCENT] = UiScale.normalizePercent(percent)
+        }
+    }
+
+    // 界面明暗主题 Flow，取值 system / light / dark
+    val themeMode: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_THEME_MODE] ?: THEME_MODE_SYSTEM
+    }
+
+    suspend fun saveThemeMode(mode: String) {
+        dataStore.edit { prefs ->
+            prefs[KEY_THEME_MODE] = when (mode) {
+                THEME_MODE_LIGHT, THEME_MODE_DARK -> mode
+                else -> THEME_MODE_SYSTEM
+            }
         }
     }
 

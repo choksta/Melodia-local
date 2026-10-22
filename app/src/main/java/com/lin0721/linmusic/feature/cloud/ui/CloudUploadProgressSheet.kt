@@ -42,6 +42,7 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.NeteaseRed
 import com.lin0721.linmusic.feature.cloud.upload.UploadStatus
 import com.lin0721.linmusic.feature.cloud.upload.UploadTask
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private val StatusGreen = Color(0xFF639922)
 
@@ -76,7 +77,7 @@ fun CloudUploadProgressSheet(
         ) {
             Text(
                 text = "正在上传",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp,
                 modifier = Modifier.padding(bottom = 2.dp)
             )
@@ -93,11 +94,11 @@ fun CloudUploadProgressSheet(
                     progress = { overallProgress.coerceIn(0f, 1f) },
                     modifier = Modifier.weight(1f).height(6.dp),
                     color = NeteaseRed,
-                    trackColor = Color.White.copy(alpha = 0.1f)
+                    trackColor = SurfaceOverlay.copy(alpha = 0.1f)
                 )
                 Text(
                     text = "${(overallProgress * 100).toInt()}%",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(start = MelodiaSpacing.sm)
                 )

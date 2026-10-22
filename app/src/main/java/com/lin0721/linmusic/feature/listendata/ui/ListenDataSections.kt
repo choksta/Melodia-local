@@ -65,10 +65,14 @@ import com.lin0721.linmusic.feature.listendata.domain.TopArtist
 import com.lin0721.linmusic.feature.listendata.domain.YearStat
 import com.lin0721.linmusic.feature.listendata.domain.toHours
 import com.lin0721.linmusic.feature.listendata.domain.toHoursText
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
+import androidx.compose.runtime.ReadOnlyComposable
 
 private val CardShape = RoundedCornerShape(10.dp)
-private val CardColor = Color.White.copy(alpha = 0.06f)
-private val TrackColor = Color.White.copy(alpha = 0.06f)
+private val CardColor: Color
+    @Composable @ReadOnlyComposable get() = SurfaceOverlay.copy(alpha = 0.06f)
+private val TrackColor: Color
+    @Composable @ReadOnlyComposable get() = SurfaceOverlay.copy(alpha = 0.06f)
 // 柱体最高值，横轴标签的高度由 Row 自适应撑开，不能并进固定高度里
 private val BarMaxHeight = 72.dp
 private val BarMinHeight = 3.dp
@@ -761,7 +765,7 @@ fun FriendsSection(friends: List<FriendListening>, keywords: List<String>) {
                     maxLines = 1,
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.08f))
+                        .background(SurfaceOverlay.copy(alpha = 0.08f))
                         .padding(horizontal = MelodiaSpacing.sm + MelodiaSpacing.xs, vertical = 5.dp)
                 )
             }

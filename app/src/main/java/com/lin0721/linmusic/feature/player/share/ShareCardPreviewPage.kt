@@ -74,6 +74,7 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaPress
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.PillRadius
 import kotlin.math.absoluteValue
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private val PillShape = RoundedCornerShape(PillRadius)
 private val Ink = Color(0xFF1A1A1A)
@@ -202,7 +203,7 @@ internal fun ShareCardPreviewPage(
 @Composable
 private fun KindToggle(kind: ShareCardKind, onChange: (ShareCardKind) -> Unit, modifier: Modifier) {
     Row(
-        modifier.width(260.dp).height(40.dp).clip(PillShape).background(Color.White.copy(alpha = 0.12f))
+        modifier.width(260.dp).height(40.dp).clip(PillShape).background(SurfaceOverlay.copy(alpha = 0.12f))
     ) {
         ShareCardKind.entries.forEach { option ->
             val selected = option == kind
@@ -266,7 +267,7 @@ private fun BackgroundRow(
 
 @Composable
 private fun Swatch(selected: Boolean, onClick: () -> Unit, content: @Composable () -> Unit) {
-    val ring by animateColorAsState(if (selected) Color.White else Color.White.copy(alpha = 0.2f), label = "swatchRing")
+    val ring by animateColorAsState(if (selected) Color.White else SurfaceOverlay.copy(alpha = 0.2f), label = "swatchRing")
     Box(
         Modifier.size(40.dp)
             .pressable(MelodiaPress.Pill, CircleShape, onClick = onClick)
@@ -280,7 +281,7 @@ private fun Swatch(selected: Boolean, onClick: () -> Unit, content: @Composable 
 
 @Composable
 internal fun OptionChip(label: String, icon: ImageVector?, selected: Boolean, onClick: () -> Unit) {
-    val bg by animateColorAsState(if (selected) Color.White else Color.White.copy(alpha = 0.12f), label = "chipBg")
+    val bg by animateColorAsState(if (selected) Color.White else SurfaceOverlay.copy(alpha = 0.12f), label = "chipBg")
     val fg by animateColorAsState(if (selected) Ink else Color.White, label = "chipFg")
     Row(
         Modifier.height(36.dp)

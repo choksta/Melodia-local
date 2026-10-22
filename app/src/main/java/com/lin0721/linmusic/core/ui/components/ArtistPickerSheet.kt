@@ -20,6 +20,7 @@ import com.lin0721.linmusic.core.ui.theme.BackgroundDark
 import com.lin0721.linmusic.core.ui.theme.BottomSheetShape
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import kotlinx.coroutines.launch
+import androidx.compose.material3.MaterialTheme
 
 data class ArtistPickerEntry(
     val id: Long,
@@ -54,7 +55,7 @@ fun ArtistPickerSheet(
         ) {
             Text(
                 text = "选择歌手",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = MelodiaSpacing.md, vertical = MelodiaSpacing.sm)

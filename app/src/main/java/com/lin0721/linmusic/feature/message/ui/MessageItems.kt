@@ -32,6 +32,8 @@ import com.lin0721.linmusic.feature.message.domain.CommentMessage
 import com.lin0721.linmusic.feature.message.domain.ForwardMessage
 import com.lin0721.linmusic.feature.message.domain.MessageUser
 import com.lin0721.linmusic.feature.message.domain.NoticeItem
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 三个 Tab 共用的条目骨架：头像 + 昵称 + 副标题（动作与时间），正文由调用方填充
 @Composable
@@ -55,7 +57,7 @@ private fun MessageRowFrame(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.08f))
+                .background(SurfaceOverlay.copy(alpha = 0.08f))
                 .then(if (userClick != null) Modifier.clickable(onClick = userClick) else Modifier),
             contentScale = ContentScale.Crop
         )
@@ -65,7 +67,7 @@ private fun MessageRowFrame(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = user?.nickname?.takeIf { it.isNotBlank() } ?: "网易云用户",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
@@ -90,7 +92,7 @@ private fun MessageContentText(text: String) {
     Spacer(modifier = Modifier.height(6.dp))
     Text(
         text = text.trim(),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.onSurface,
         fontSize = 14.sp,
         maxLines = 5,
         overflow = TextOverflow.Ellipsis
@@ -121,7 +123,7 @@ private fun MessageQuote(text: String) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
-            .background(Color.White.copy(alpha = 0.06f))
+            .background(SurfaceOverlay.copy(alpha = 0.06f))
             .padding(horizontal = 10.dp, vertical = 6.dp)
     )
 }

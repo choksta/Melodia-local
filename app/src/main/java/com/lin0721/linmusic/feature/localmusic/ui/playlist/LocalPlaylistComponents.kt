@@ -51,6 +51,7 @@ import com.lin0721.linmusic.core.ui.theme.SurfaceLight
 import com.lin0721.linmusic.feature.localmusic.domain.LocalPlaylist
 import com.lin0721.linmusic.feature.localmusic.domain.LocalTrack
 import com.lin0721.linmusic.feature.localmusic.ui.components.LocalCover
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private const val MOSAIC_SIZE = 4
 
@@ -90,7 +91,7 @@ fun NewPlaylistTile(size: Dp, modifier: Modifier = Modifier) {
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(8.dp))
-            .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(8.dp)),
+            .border(1.dp, SurfaceOverlay.copy(alpha = 0.3f), RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center
     ) {
         Icon(

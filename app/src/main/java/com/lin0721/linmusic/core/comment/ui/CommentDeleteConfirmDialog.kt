@@ -13,6 +13,7 @@ import com.lin0721.linmusic.core.ui.components.MelodiaTextButton
 import com.lin0721.linmusic.core.ui.theme.NeteaseRed
 import com.lin0721.linmusic.core.ui.theme.SurfaceDark
 import com.lin0721.linmusic.core.ui.theme.TextGray
+import androidx.compose.material3.MaterialTheme
 
 // 删除评论二次确认弹窗
 @Composable
@@ -23,7 +24,7 @@ fun CommentDeleteConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isDeleting) onDismiss() },
-        title = { Text("删除评论", color = Color.White, fontWeight = FontWeight.Bold) },
+        title = { Text("删除评论", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
         text = { Text("确定要删除这条评论吗？删除后无法恢复。", color = TextGray, fontSize = 14.sp) },
         confirmButton = {
             MelodiaTextButton(
@@ -36,7 +37,7 @@ fun CommentDeleteConfirmDialog(
         },
         dismissButton = {
             MelodiaTextButton(onClick = onDismiss, enabled = !isDeleting) {
-                Text("取消", color = Color.White)
+                Text("取消", color = MaterialTheme.colorScheme.onSurface)
             }
         },
         containerColor = SurfaceDark,

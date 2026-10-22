@@ -49,6 +49,7 @@ import com.lin0721.linmusic.core.ui.theme.SurfaceLight
 import com.lin0721.linmusic.core.ui.theme.TextGray
 import com.lin0721.linmusic.core.ui.theme.TimerWarningRed
 import com.lin0721.linmusic.feature.recognition.domain.RecognitionMode
+import androidx.compose.material3.MaterialTheme
 
 private data class ModeOption(
     val mode: RecognitionMode,
@@ -114,7 +115,7 @@ internal fun RecognitionModeChooserSheet(
                 .padding(start = MelodiaSpacing.md, end = MelodiaSpacing.md, bottom = MelodiaSpacing.lg),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(text = "选择识别方式", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(text = "选择识别方式", color = MaterialTheme.colorScheme.onSurface, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Text(text = "点选后立即开始，识别中也可以在顶部切换", color = TextGray, fontSize = 13.sp)
             Spacer(Modifier.height(MelodiaSpacing.xs))
             ModeOptions.forEach { option ->
@@ -151,7 +152,7 @@ private fun ModeOptionCard(option: ModeOption, isLastUsed: Boolean, onClick: () 
         Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MelodiaSpacing.xs)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = option.label, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text(text = option.label, color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 if (isLastUsed) {
                     Spacer(Modifier.width(MelodiaSpacing.sm))
                     Surface(shape = RoundedCornerShape(10.dp), color = NeteaseRed.copy(alpha = 0.2f)) {

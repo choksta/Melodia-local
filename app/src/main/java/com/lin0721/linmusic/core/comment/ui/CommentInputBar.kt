@@ -57,6 +57,8 @@ import com.lin0721.linmusic.core.ui.theme.LocalMelodiaSystemBarsConsumed
 import com.lin0721.linmusic.core.ui.theme.melodiaNavigationBarBottomPadding
 import com.lin0721.linmusic.core.ui.theme.uiEnter
 import com.lin0721.linmusic.core.ui.theme.uiExit
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 评论区底部常驻输入栏：随软键盘升降，支持直接发表主评论与针对指定用户的回复
 @Composable
@@ -115,7 +117,7 @@ fun CommentInputBar(
             .pointerInput(Unit) { detectTapGestures { } }
             .padding(bottom = bottomPadding)
     ) {
-        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+        HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
 
         // 回复目标标签栏
         AnimatedVisibility(
@@ -176,7 +178,7 @@ fun CommentInputBar(
                 maxLines = 4,
                 shape = RoundedCornerShape(24.dp),
                 focusRequester = focusRequester,
-                containerColor = Color.White.copy(alpha = 0.12f),
+                containerColor = SurfaceOverlay.copy(alpha = 0.12f),
                 textColor = Color.White,
                 placeholderColor = TextGray.copy(alpha = 0.8f),
                 modifier = Modifier.weight(1f)
@@ -202,14 +204,14 @@ fun CommentInputBar(
             ) {
                 if (isSubmitting) {
                     CircularProgressIndicator(
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp
                     )
                 } else {
                     Text(
                         text = "发送",
-                        color = if (canSubmit) Color.White else Color.White.copy(alpha = 0.6f),
+                        color = if (canSubmit) Color.White else SurfaceOverlay.copy(alpha = 0.6f),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )

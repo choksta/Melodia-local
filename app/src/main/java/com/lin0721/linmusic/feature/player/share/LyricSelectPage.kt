@@ -41,6 +41,8 @@ import com.lin0721.linmusic.core.ui.components.MelodiaIconButton
 import com.lin0721.linmusic.core.ui.interaction.pressable
 import com.lin0721.linmusic.core.ui.theme.MelodiaPress
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private val ChunkShape = RoundedCornerShape(16.dp)
 private val SelectedInk = Color(0xFF1A1A1A)
@@ -70,10 +72,10 @@ internal fun LyricSelectPage(
                 Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "关闭", tint = Color.White)
             }
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("选择歌词", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("选择歌词", color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Text(
                     "已选择 ${pick.lineCount} 行歌词",
-                    color = Color.White.copy(alpha = 0.75f),
+                    color = SurfaceOverlay.copy(alpha = 0.75f),
                     fontSize = 13.sp
                 )
             }
@@ -107,7 +109,7 @@ internal fun LyricSelectPage(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,
                     contentColor = SelectedInk,
-                    disabledContainerColor = Color.White.copy(alpha = 0.3f),
+                    disabledContainerColor = SurfaceOverlay.copy(alpha = 0.3f),
                     disabledContentColor = SelectedInk.copy(alpha = 0.6f)
                 ),
                 contentPadding = PaddingValues(horizontal = 40.dp, vertical = 14.dp)

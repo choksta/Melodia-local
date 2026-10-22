@@ -47,6 +47,8 @@ import com.lin0721.linmusic.core.model.getQualityDisplayName
 import com.lin0721.linmusic.core.player.formatSleepTimerRemaining
 import kotlinx.coroutines.launch
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,7 +133,7 @@ fun SongMoreOptionsSheet(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -149,7 +151,7 @@ fun SongMoreOptionsSheet(
             }
 
             HorizontalDivider(
-                color = Color.White.copy(alpha = 0.08f),
+                color = SurfaceOverlay.copy(alpha = 0.08f),
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = MelodiaSpacing.sm)
             )
 
@@ -295,13 +297,13 @@ fun SongMoreOptionsSheet(
                         Icon(
                             imageVector = Icons.Rounded.Tune,
                             contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.7f),
+                            tint = SurfaceOverlay.copy(alpha = 0.7f),
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(
                             text = "音质: ${getQualityDisplayName(currentQuality)}",
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 15.sp,
                             modifier = Modifier.weight(1f)
                         )
@@ -346,7 +348,7 @@ fun SongMoreOptionsSheet(
                             ) {
                                 Text(
                                     text = "选择播放音质",
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontSize = 20.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     modifier = Modifier.padding(bottom = MelodiaSpacing.md)
@@ -420,13 +422,13 @@ fun SongMoreOptionsSheet(
                     Icon(
                         imageVector = Icons.Rounded.Subtitles,
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.7f),
+                        tint = SurfaceOverlay.copy(alpha = 0.7f),
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
                         text = "播放页小歌词",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 15.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -458,13 +460,13 @@ private fun OptionRow(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.7f),
+            tint = SurfaceOverlay.copy(alpha = 0.7f),
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
         Text(
             text = text,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 15.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis

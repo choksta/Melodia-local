@@ -81,6 +81,8 @@ import com.lin0721.linmusic.feature.player.ui.deviceIcon
 import com.lin0721.linmusic.feature.player.ui.deviceLabel
 import com.lin0721.linmusic.feature.player.ui.rememberCurrentOutputDevice
 import kotlinx.coroutines.delay
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 //悬浮播放控制卡片
 
@@ -409,6 +411,7 @@ private fun MiniPlayerContentRow(
             val titleLine = if (connectedDevice != null && artist.isNotBlank()) "$title · $artist" else title
             Text(
                 text = titleLine,
+                // 卡片底色恒为压暗后的封面色，文字必须用白，不能跟主题
                 color = Color.White,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
@@ -512,7 +515,7 @@ fun MelodiaNavigationBar(
                 if (expanded) {
                     Modifier
                         .fillMaxHeight()
-                        .border(0.5.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(InfoCardRadius))
+                        .border(0.5.dp, SurfaceOverlay.copy(alpha = 0.14f), RoundedCornerShape(InfoCardRadius))
                 } else {
                     Modifier
                 }
@@ -585,14 +588,14 @@ fun MelodiaNavigationBar(
                         Icon(
                             imageVector = icon,
                             contentDescription = label,
-                            tint = if (isSelected) Color.White else TextGray,
+                            tint = if (isSelected) MaterialTheme.colorScheme.onSurface else TextGray,
                             modifier = Modifier.size(if (iconOnly) 24.dp else 22.dp)
                         )
                     }
                     if (!iconOnly) {
                         Text(
                             text = label,
-                            color = if (isSelected) Color.White else TextGray,
+                            color = if (isSelected) MaterialTheme.colorScheme.onSurface else TextGray,
                             fontSize = 11.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                         )

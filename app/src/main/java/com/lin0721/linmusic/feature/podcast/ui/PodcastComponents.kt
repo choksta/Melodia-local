@@ -67,13 +67,16 @@ import com.lin0721.linmusic.feature.podcast.domain.formatRemaining
 import com.lin0721.linmusic.feature.podcast.domain.formatSubCount
 import com.lin0721.linmusic.feature.podcast.domain.podcastSubtitle
 import kotlinx.coroutines.flow.distinctUntilChanged
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
+import androidx.compose.runtime.ReadOnlyComposable
 
 internal val PodcastEdgePadding = 20.dp
 
 private val RadioCardWidthCompact = 120.dp
 private val RadioCardWidthExpanded = 150.dp
 private val GridGap = 12.dp
-private val TrackColor = Color.White.copy(alpha = 0.16f)
+private val TrackColor: Color
+    @Composable @ReadOnlyComposable get() = SurfaceOverlay.copy(alpha = 0.16f)
 
 // 电台封面自带查询串的情况与歌单同理，追加 param 前需判断
 internal fun String.withPodcastCoverParam(param: String): String =
@@ -150,7 +153,7 @@ fun PodcastFilterChip(text: String, selected: Boolean, onClick: () -> Unit) {
             .clip(CircleShape)
             .then(
                 if (selected) Modifier.background(Color.White)
-                else Modifier.border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape)
+                else Modifier.border(1.dp, SurfaceOverlay.copy(alpha = 0.18f), CircleShape)
             )
             .padding(horizontal = 12.dp, vertical = 5.dp)
     ) {
@@ -205,7 +208,7 @@ fun ContinueListeningTile(
             .height(56.dp)
             .pressable(MelodiaPress.Card) { onClick() }
             .clip(RoundedCornerShape(RadiusCompact))
-            .background(Color.White.copy(alpha = 0.08f))
+            .background(SurfaceOverlay.copy(alpha = 0.08f))
     ) {
         Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             PodcastCover(
@@ -261,7 +264,7 @@ fun PodcastRadioCard(
             if (rank != null) {
                 Text(
                     text = "$rank",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier
@@ -274,7 +277,7 @@ fun PodcastRadioCard(
             if (hasUpdate) {
                 Text(
                     text = "新",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier

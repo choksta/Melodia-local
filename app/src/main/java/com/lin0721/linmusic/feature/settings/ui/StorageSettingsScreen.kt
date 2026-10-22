@@ -32,13 +32,16 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.NeteaseRed
 import com.lin0721.linmusic.core.ui.theme.TextGray
 import com.lin0721.linmusic.feature.cloud.domain.formatFileSize
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 5 个分类的图例色，复用首页功能入口卡片已有的策展色，不新造颜色
 private val CacheAudioColor = NeteaseRed
 private val CacheImageColor = EntryHotGradient.first()
 private val CacheLogColor = EntryRadarGradient.first()
 private val CacheUpdateColor = EntryRoamingGradient.first()
-private val CacheOtherColor = TextGray
+// 顶层 val 不是 Composable 上下文，取明暗两套主题下都可读的中性灰
+private val CacheOtherColor = Color(0xFF7A7A85)
 
 // 待确认的清理操作带二次确认
 private data class PendingClear(val title: String, val message: String, val action: () -> Unit)
@@ -85,7 +88,7 @@ fun StorageSettingsView(viewModel: SettingsViewModel, context: Context) {
                         updatePackageSize = updatePackageSize,
                         otherCacheSize = otherCacheSize
                     )
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
 
                     // 一键清理全部
                     Row(
@@ -112,7 +115,7 @@ fun StorageSettingsView(viewModel: SettingsViewModel, context: Context) {
                         )
                     }
 
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                     CacheCategoryRow(
                         title = "音频缓存",
                         subtitle = "播放器已缓冲的歌曲音频数据",
@@ -125,7 +128,7 @@ fun StorageSettingsView(viewModel: SettingsViewModel, context: Context) {
                         }
                     )
 
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                     CacheCategoryRow(
                         title = "图片缓存",
                         subtitle = "封面、头像等图片的内存与磁盘缓存",
@@ -138,7 +141,7 @@ fun StorageSettingsView(viewModel: SettingsViewModel, context: Context) {
                         }
                     )
 
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                     CacheCategoryRow(
                         title = "日志文件",
                         subtitle = "诊断日志，清空后将无法再导出",
@@ -151,7 +154,7 @@ fun StorageSettingsView(viewModel: SettingsViewModel, context: Context) {
                         }
                     )
 
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                     CacheCategoryRow(
                         title = "更新安装包",
                         subtitle = "App 更新时下载的旧安装包",
@@ -164,7 +167,7 @@ fun StorageSettingsView(viewModel: SettingsViewModel, context: Context) {
                         }
                     )
 
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                     CacheCategoryRow(
                         title = "其他临时文件",
                         subtitle = "其余无法归类的应用临时数据",
@@ -177,7 +180,7 @@ fun StorageSettingsView(viewModel: SettingsViewModel, context: Context) {
                         }
                     )
 
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
 
                     // 缓存大小上限设置行
                     Row(

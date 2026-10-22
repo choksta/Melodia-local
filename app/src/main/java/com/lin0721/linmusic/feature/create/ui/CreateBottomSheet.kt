@@ -38,6 +38,7 @@ import com.lin0721.linmusic.core.ui.theme.SurfaceLight
 import com.lin0721.linmusic.core.ui.theme.TextGray
 import org.koin.androidx.compose.koinViewModel
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
+import androidx.compose.material3.MaterialTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -145,7 +146,7 @@ private fun CreateMenuItem(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -187,7 +188,7 @@ private fun CreatePlaylistDialog(
         ) {
             Text(
                 text = "新建歌单",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = MelodiaSpacing.md)
@@ -208,7 +209,7 @@ private fun CreatePlaylistDialog(
                 BasicTextField(
                     value = name,
                     onValueChange = { name = it },
-                    textStyle = TextStyle(color = Color.White, fontSize = 15.sp),
+                    textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp),
                     cursorBrush = SolidColor(NeteaseRed),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
@@ -223,7 +224,7 @@ private fun CreatePlaylistDialog(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text("设为隐私歌单", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text("设为隐私歌单", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                     Text("仅自己可见", color = TextGray, fontSize = 12.sp)
                 }
                 MelodiaSwitch(
@@ -243,7 +244,7 @@ private fun CreatePlaylistDialog(
                     onClick = onDismiss,
                     enabled = !isCreating
                 ) {
-                    Text("取消", color = Color.White)
+                    Text("取消", color = MaterialTheme.colorScheme.onSurface)
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 MelodiaButton(
@@ -255,11 +256,11 @@ private fun CreatePlaylistDialog(
                     if (isCreating) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("创建", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("创建", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                     }
                 }
             }

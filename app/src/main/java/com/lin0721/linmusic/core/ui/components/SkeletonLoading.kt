@@ -45,6 +45,7 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.SurfaceLight
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 扫光骨架屏背景：surfaceVariant/surface 之间无限循环平移渐变，贴合项目深色低调基调
 @Composable
@@ -82,7 +83,7 @@ fun CoverPlaceholder(modifier: Modifier = Modifier) {
         Icon(
             Icons.Rounded.MusicNote,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.3f),
+            tint = SurfaceOverlay.copy(alpha = 0.3f),
             modifier = Modifier.fillMaxSize(0.34f)
         )
     }

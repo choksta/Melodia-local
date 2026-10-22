@@ -42,6 +42,8 @@ import com.lin0721.linmusic.core.ui.theme.PillRadius
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 @Composable
 fun AudioSourcesSettingsView(viewModel: SettingsViewModel) {
@@ -111,7 +113,7 @@ fun AudioSourcesSettingsView(viewModel: SettingsViewModel) {
                     checked = searchAggregationEnabled,
                     onCheckedChange = { viewModel.updateSearchAggregationEnabled(it) }
                 )
-                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                 SettingsSwitchRow(
                     title = "无版权/VIP 自动换源",
                     subtitle = "官方网易云音源不可用或仅为试听时，自动从可用音源解析完整播放直链",
@@ -119,7 +121,7 @@ fun AudioSourcesSettingsView(viewModel: SettingsViewModel) {
                     onCheckedChange = { viewModel.updateFallbackEnabled(it) }
                 )
                 if (fallbackEnabled) {
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                     SettingsSwitchRow(
                         title = "社区源优先",
                         subtitle = "开启后优先尝试通过 LX 插件脚本解析，失败后 fallback 到远程 UNM 服务；关闭则先尝试远程 UNM",
@@ -322,7 +324,7 @@ fun AudioSourcesSettingsView(viewModel: SettingsViewModel) {
                 )
 
                 if (unmRemoteFallbackEnabled) {
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
 
                     SettingsRow(
                         title = "远程服务接口 (Base URL)",
@@ -330,7 +332,7 @@ fun AudioSourcesSettingsView(viewModel: SettingsViewModel) {
                         onClick = { showServerUrlDialog = true }
                     )
 
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
 
                     SettingsSwitchRow(
                         title = "服务端自动选择模式",

@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lin0721.linmusic.LocalBottomOverlayInset
 import com.lin0721.linmusic.core.ui.components.PlaceholderTextField
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 @Composable
 fun NetworkSettingsView(viewModel: SettingsViewModel) {
@@ -37,7 +38,7 @@ fun NetworkSettingsView(viewModel: SettingsViewModel) {
                     checked = wifiOnlyPlay,
                     onCheckedChange = { viewModel.updateWifiOnlyPlay(it) }
                 )
-                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                 SettingsSwitchRow(
                     title = "流量播放警告提示",
                     subtitle = "从 Wi-Fi 切换为移动数据时弹出提醒",
@@ -57,7 +58,7 @@ fun NetworkSettingsView(viewModel: SettingsViewModel) {
                 )
 
                 if (useRealIp) {
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -81,7 +82,7 @@ fun NetworkSettingsView(viewModel: SettingsViewModel) {
                     }
                 }
 
-                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
 
                 SettingsSwitchRow(
                     title = "使用代理服务器",

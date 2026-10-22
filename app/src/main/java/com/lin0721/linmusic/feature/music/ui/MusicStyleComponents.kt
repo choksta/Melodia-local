@@ -44,6 +44,7 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaPress
 import com.lin0721.linmusic.core.ui.theme.RadiusCompact
 import com.lin0721.linmusic.feature.music.domain.MusicStyle
 import com.lin0721.linmusic.feature.music.domain.StyleHead
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 internal val MusicEdgePadding = 20.dp
 
@@ -97,7 +98,7 @@ private fun SubStyleChip(text: String, selected: Boolean, onClick: () -> Unit) {
             .clip(CircleShape)
             .then(
                 if (selected) Modifier.background(Color.White)
-                else Modifier.border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape)
+                else Modifier.border(1.dp, SurfaceOverlay.copy(alpha = 0.18f), CircleShape)
             )
             .padding(horizontal = 11.dp, vertical = 5.dp)
     ) {
@@ -138,7 +139,7 @@ fun MusicStyleHero(head: StyleHead?, fallbackName: String, accent: Color) {
             head?.enName?.takeIf { it.isNotBlank() }?.let { enName ->
                 Text(
                     text = enName,
-                    color = Color.White.copy(alpha = 0.15f),
+                    color = SurfaceOverlay.copy(alpha = 0.15f),
                     fontSize = 34.sp,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
@@ -153,13 +154,13 @@ fun MusicStyleHero(head: StyleHead?, fallbackName: String, accent: Color) {
             ) {
                 Text(
                     text = "曲风",
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = SurfaceOverlay.copy(alpha = 0.85f),
                     fontSize = 11.5.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = head?.name ?: fallbackName,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 38.sp,
                     lineHeight = 44.sp,
                     fontWeight = FontWeight.ExtraBold,
@@ -170,7 +171,7 @@ fun MusicStyleHero(head: StyleHead?, fallbackName: String, accent: Color) {
                 if (subtitle.isNotBlank()) {
                     Text(
                         text = subtitle,
-                        color = Color.White.copy(alpha = 0.85f),
+                        color = SurfaceOverlay.copy(alpha = 0.85f),
                         fontSize = 12.sp,
                         lineHeight = 17.sp,
                         maxLines = 2,
@@ -197,7 +198,7 @@ fun MusicFavouriteSongCard(track: Track, onClick: () -> Unit, modifier: Modifier
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
-            .background(Color.White.copy(alpha = 0.07f))
+            .background(SurfaceOverlay.copy(alpha = 0.07f))
             .clickable { onClick() }
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically

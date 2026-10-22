@@ -47,6 +47,7 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaPress
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.rememberMelodiaGridColumns
 import org.koin.androidx.compose.koinViewModel
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 精品歌单播放量简易格式化，与 feature/playlist 的同名函数逻辑一致但不跨域引用，保持模块边界干净
 private fun formatPlayCount(count: Long): String = when {
@@ -239,14 +240,14 @@ private fun CategoryHeroHeader(
         ) {
             Text(
                 text = category,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 text = "共 $total 个精品歌单",
-                color = Color.White.copy(alpha = 0.8f),
+                color = SurfaceOverlay.copy(alpha = 0.8f),
                 fontSize = 13.sp
             )
         }

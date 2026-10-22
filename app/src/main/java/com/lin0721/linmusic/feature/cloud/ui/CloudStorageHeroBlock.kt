@@ -51,7 +51,7 @@ fun CloudStorageHeroBlock(quota: CloudQuota, modifier: Modifier = Modifier) {
         ) {
             Text(
                 text = "${formatWholeGigabytes(quota.usedBytes)}",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 44.sp,
                 fontWeight = FontWeight.Medium,
                 lineHeight = 44.sp,

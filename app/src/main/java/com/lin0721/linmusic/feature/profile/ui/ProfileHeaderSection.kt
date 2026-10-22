@@ -37,6 +37,7 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.PillRadius
 import com.lin0721.linmusic.core.ui.theme.TextGray
 import com.lin0721.linmusic.feature.profile.domain.ProfileUserInfo
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 头部资料区（头像/昵称/等级/签名/统计/关注按钮），不含 Tab 栏——
 @Composable
@@ -74,7 +75,7 @@ fun ProfileHeaderInfo(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = userInfo.nickname,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -128,7 +129,7 @@ fun ProfileHeaderInfo(
             ) {
                 Text(
                     text = "${userInfo.followsCount}",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -146,7 +147,7 @@ fun ProfileHeaderInfo(
             ) {
                 Text(
                     text = "${userInfo.followedsCount}",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -161,7 +162,7 @@ fun ProfileHeaderInfo(
             Column(horizontalAlignment = Alignment.Start) {
                 Text(
                     text = "${userInfo.playlistCount}",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -185,7 +186,7 @@ fun ProfileHeaderInfo(
                         onClick = onFollowClick
                     )
                     .border(
-                        border = if (userInfo.isFollowedByMe) BorderStroke(1.dp, Color.White.copy(alpha = 0.4f))
+                        border = if (userInfo.isFollowedByMe) BorderStroke(1.dp, SurfaceOverlay.copy(alpha = 0.4f))
                         else BorderStroke(0.dp, Color.Transparent),
                         shape = RoundedCornerShape(PillRadius)
                     )
@@ -205,7 +206,7 @@ fun ProfileHeaderInfo(
 
         // 分割线
         HorizontalDivider(
-            color = Color.White.copy(alpha = 0.08f),
+            color = SurfaceOverlay.copy(alpha = 0.08f),
             thickness = 1.dp
         )
     }

@@ -112,6 +112,8 @@ fun DownloadProgressBanner(modifier: Modifier = Modifier) {
     }
 }
 
+// TextGray 已改为按主题取值的 Composable 常量，构建函数需同样标注 @Composable
+@Composable
 private fun buildBannerContent(tasks: List<DownloadTask>, counts: DownloadCounts): DownloadBannerContent {
     if (counts.active == 0 && counts.paused > 0) {
         return DownloadBannerContent(

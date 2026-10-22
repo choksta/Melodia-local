@@ -76,6 +76,8 @@ import com.lin0721.linmusic.feature.recognition.domain.RecognitionMode
 import com.lin0721.linmusic.feature.recognition.domain.RecognitionNowPlaying
 import com.lin0721.linmusic.feature.recognition.domain.RecognitionProgress
 import com.lin0721.linmusic.feature.recognition.engine.RecognitionSession
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private val WaveformHeight = 160.dp
 private val PillShape = RoundedCornerShape(PillRadius)
@@ -83,7 +85,7 @@ private val PillShape = RoundedCornerShape(PillRadius)
 @Composable
 private fun Headline(title: String, subtitle: String?) {
     Column(verticalArrangement = Arrangement.spacedBy(MelodiaSpacing.sm)) {
-        Text(text = title, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+        Text(text = title, color = MaterialTheme.colorScheme.onSurface, fontSize = 30.sp, fontWeight = FontWeight.Bold)
         if (subtitle != null) {
             Text(text = subtitle, color = TextGray, fontSize = 15.sp)
         }
@@ -237,7 +239,7 @@ internal fun RecognitionFoundContent(
                     highlightStartSecond = state.windowStartSecond,
                     highlight = WaveformHighlight.Bars,
                     showPendingSlots = false,
-                    barColor = Color.White.copy(alpha = 0.35f),
+                    barColor = SurfaceOverlay.copy(alpha = 0.35f),
                     modifier = Modifier.fillMaxWidth().height(40.dp)
                 )
                 Spacer(Modifier.height(MelodiaSpacing.sm))
@@ -347,16 +349,16 @@ private fun BestMatchCard(
                         modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        PlayingEqualizerBars(color = Color.White, animate = nowPlaying.isPlaying)
+                        PlayingEqualizerBars(color = MaterialTheme.colorScheme.onSurface, animate = nowPlaying.isPlaying)
                     }
                 }
             }
             Spacer(Modifier.width(14.dp))
             Column(verticalArrangement = Arrangement.spacedBy(MelodiaSpacing.xs)) {
-                Text(text = "最可能是", color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp)
+                Text(text = "最可能是", color = SurfaceOverlay.copy(alpha = 0.72f), fontSize = 12.sp)
                 Text(
                     text = candidate.title,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
@@ -364,7 +366,7 @@ private fun BestMatchCard(
                 )
                 Text(
                     text = candidate.artists,
-                    color = Color.White.copy(alpha = 0.72f),
+                    color = SurfaceOverlay.copy(alpha = 0.72f),
                     fontSize = 15.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -380,10 +382,10 @@ private fun BestMatchCard(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(
                         text = if (nowPlaying != null) formatTime(displayMs) else "命中位置 $positionText",
-                        color = Color.White.copy(alpha = 0.72f),
+                        color = SurfaceOverlay.copy(alpha = 0.72f),
                         fontSize = 12.sp
                     )
-                    Text(text = formatTime(candidate.durationMs), color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp)
+                    Text(text = formatTime(candidate.durationMs), color = SurfaceOverlay.copy(alpha = 0.72f), fontSize = 12.sp)
                 }
             }
         }
@@ -418,7 +420,7 @@ private fun HitPositionBar(fraction: Float) {
                 .fillMaxWidth()
                 .height(4.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(Color.White.copy(alpha = 0.25f))
+                .background(SurfaceOverlay.copy(alpha = 0.25f))
         )
         Box(
             Modifier
@@ -458,7 +460,7 @@ internal fun RecognitionFailedContent(
             Spacer(Modifier.height(72.dp))
             RecognitionWaveform(
                 levels = progress.levels,
-                barColor = Color.White.copy(alpha = 0.28f),
+                barColor = SurfaceOverlay.copy(alpha = 0.28f),
                 modifier = Modifier.fillMaxWidth().height(WaveformHeight)
             )
             Spacer(Modifier.height(14.dp))

@@ -50,6 +50,8 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.NeteaseRed
 import com.lin0721.linmusic.core.ui.theme.SurfaceDark
 import com.lin0721.linmusic.core.ui.theme.TextGray
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 internal val TrackGray = Color(0xFF333333)
 internal val MutedText = Color(0xFF8A8A8A)
@@ -110,12 +112,12 @@ internal fun TaskRow(task: DownloadTask, queuePosition: Int?, actions: TaskActio
                         modifier = Modifier
                             .height(32.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
+                            .border(1.dp, SurfaceOverlay.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
                             .clickable { actions.onRetry(listOf(task)) }
                             .padding(horizontal = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "重试", color = Color.White, fontSize = 12.sp)
+                        Text(text = "重试", color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
                     }
                 }
                 DownloadTaskStatus.SUCCEEDED -> {
@@ -299,7 +301,7 @@ private fun TaskInfo(task: DownloadTask, modifier: Modifier = Modifier, showProg
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = meta.songName,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
@@ -333,7 +335,7 @@ private fun TaskInfo(task: DownloadTask, modifier: Modifier = Modifier, showProg
             LinearProgressIndicator(
                 progress = { task.progress.coerceIn(0, 100) / 100f },
                 modifier = Modifier.fillMaxWidth().height(3.dp),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 trackColor = TrackGray,
                 drawStopIndicator = {}
             )

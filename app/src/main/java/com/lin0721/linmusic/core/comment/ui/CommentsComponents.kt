@@ -51,6 +51,8 @@ import com.lin0721.linmusic.core.ui.theme.TextGray
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.uiSpring
 import com.lin0721.linmusic.core.ui.theme.uiTween
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 @Composable
 fun CommentsPreviewCard(
@@ -85,7 +87,7 @@ fun CommentsPreviewCard(
                     )
                     Text(
                         text = "评论",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -164,7 +166,7 @@ fun CommentsPreviewCard(
                                 )
                                 if (index < allComments.size - 1) {
                                     HorizontalDivider(
-                                        color = Color.White.copy(alpha = 0.08f),
+                                        color = SurfaceOverlay.copy(alpha = 0.08f),
                                         thickness = 0.5.dp
                                     )
                                 }
@@ -210,12 +212,12 @@ fun CommentSortTabs(
         tabs.forEach { (type, label) ->
             val isSelected = type == current
             val bgColor by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.1f),
+                targetValue = if (isSelected) MaterialTheme.colorScheme.primary else SurfaceOverlay.copy(alpha = 0.1f),
                 animationSpec = uiTween(220),
                 label = "sort_pill_bg"
             )
             val contentColor by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.LightGray,
+                targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                 animationSpec = uiTween(220),
                 label = "sort_pill_content"
             )
@@ -292,7 +294,7 @@ fun CommentRowItem(
                 ) {
                     Text(
                         text = comment.user.nickname,
-                        color = Color.White.copy(alpha = 0.9f),
+                        color = SurfaceOverlay.copy(alpha = 0.9f),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -352,7 +354,7 @@ fun CommentRowItem(
                 ) {
                     Text(
                         text = comment.content,
-                        color = Color.White.copy(alpha = 0.95f),
+                        color = SurfaceOverlay.copy(alpha = 0.95f),
                         fontSize = 14.sp,
                         lineHeight = 20.sp,
                         maxLines = contentMaxLines,
@@ -365,7 +367,7 @@ fun CommentRowItem(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(Color.White.copy(alpha = 0.06f))
+                                .background(SurfaceOverlay.copy(alpha = 0.06f))
                                 .padding(horizontal = MelodiaSpacing.sm, vertical = 6.dp)
                         ) {
                             Text(
@@ -578,7 +580,7 @@ fun CommentFloorSkeleton(modifier: Modifier = Modifier) {
         CommentItemSkeleton()
         HorizontalDivider(
             modifier = Modifier.padding(vertical = MelodiaSpacing.sm),
-            color = Color.White.copy(alpha = 0.08f)
+            color = SurfaceOverlay.copy(alpha = 0.08f)
         )
         Box(
             modifier = Modifier
@@ -591,7 +593,7 @@ fun CommentFloorSkeleton(modifier: Modifier = Modifier) {
             CommentItemSkeleton()
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = MelodiaSpacing.sm),
-                color = Color.White.copy(alpha = 0.06f)
+                color = SurfaceOverlay.copy(alpha = 0.06f)
             )
         }
     }

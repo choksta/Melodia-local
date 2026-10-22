@@ -69,6 +69,7 @@ import com.lin0721.linmusic.feature.localmusic.ui.components.LocalPlayShuffleBut
 import com.lin0721.linmusic.feature.localmusic.ui.components.LocalSectionHeader
 import com.lin0721.linmusic.feature.localmusic.ui.components.LocalTrackRow
 import org.koin.androidx.compose.koinViewModel
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private val ArtistAvatarSize = 96.dp
 private val AlbumCoverSize = 132.dp
@@ -116,7 +117,7 @@ fun LocalArtistScreen(
                             Column {
                                 Text(
                                     text = artist.name,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 2,
@@ -124,7 +125,7 @@ fun LocalArtistScreen(
                                 )
                                 Text(
                                     text = "${artist.tracks.size} 首 · ${artist.albumCount} 张专辑",
-                                    color = Color.White.copy(alpha = 0.7f),
+                                    color = SurfaceOverlay.copy(alpha = 0.7f),
                                     fontSize = 13.sp
                                 )
                             }
@@ -221,7 +222,7 @@ fun LocalAlbumScreen(
                             Column {
                                 Text(
                                     text = album.name,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 3,
@@ -229,7 +230,7 @@ fun LocalAlbumScreen(
                                 )
                                 Text(
                                     text = "${album.artist} ›",
-                                    color = Color.White.copy(alpha = 0.85f),
+                                    color = SurfaceOverlay.copy(alpha = 0.85f),
                                     fontSize = 14.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -241,7 +242,7 @@ fun LocalAlbumScreen(
                                 )
                                 Text(
                                     text = albumMeta(album, withDuration = true),
-                                    color = Color.White.copy(alpha = 0.6f),
+                                    color = SurfaceOverlay.copy(alpha = 0.6f),
                                     fontSize = 12.sp,
                                     modifier = Modifier.padding(top = 2.dp)
                                 )

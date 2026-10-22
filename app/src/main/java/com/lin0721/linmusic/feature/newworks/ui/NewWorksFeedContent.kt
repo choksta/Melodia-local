@@ -71,6 +71,7 @@ import com.lin0721.linmusic.feature.newworks.domain.formatRelativeTime
 import com.lin0721.linmusic.feature.newworks.domain.trackSummary
 import com.lin0721.linmusic.feature.playlist.ui.PlaylistImportState
 import com.lin0721.linmusic.feature.playlist.ui.PlaylistImportTargetSheet
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private val CardShape = RoundedCornerShape(12.dp)
 private val CoverSize = 88.dp
@@ -286,7 +287,7 @@ private fun ReleaseFeedCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = release.artistName,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
@@ -295,7 +296,7 @@ private fun ReleaseFeedCard(
                 Spacer(Modifier.height(MelodiaSpacing.xs))
                 Text(
                     text = listOf(release.title, timeText).filter { it.isNotBlank() }.joinToString(" • "),
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = SurfaceOverlay.copy(alpha = 0.7f),
                     fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -309,7 +310,7 @@ private fun ReleaseFeedCard(
         Spacer(Modifier.height(MelodiaSpacing.md))
         Text(
             text = release.trackSummary(),
-            color = Color.White.copy(alpha = 0.85f),
+            color = SurfaceOverlay.copy(alpha = 0.85f),
             fontSize = 13.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis

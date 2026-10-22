@@ -56,6 +56,8 @@ import com.lin0721.linmusic.feature.home.data.DailySong
 import com.lin0721.linmusic.feature.home.data.PersonalizedPlaylist
 import com.lin0721.linmusic.feature.home.domain.ToplistInfo
 import java.time.LocalDate
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 封面取色后再压暗，保证白字在任意封面色上都看得清
 private const val SPOTLIGHT_DARKEN_FRACTION = 0.35f
@@ -177,9 +179,11 @@ private fun DailySpotlightCard(
         label = "daily_spotlight_color"
     )
     val today = remember { LocalDate.now() }
-    val trackLine = remember(songs) {
+    // remember 的 lambda 不是 Composable 上下文，前景色先取值并作为 key
+    val spotCountColor = MaterialTheme.colorScheme.onSurface
+    val trackLine = remember(songs, spotCountColor) {
         buildAnnotatedString {
-            withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.Bold)) {
+            withStyle(SpanStyle(color = spotCountColor, fontWeight = FontWeight.Bold)) {
                 append("${songs.size} 首")
             }
             songs.take(SPOTLIGHT_TRACK_PREVIEW_COUNT).forEach { song ->
@@ -213,14 +217,14 @@ private fun DailySpotlightCard(
             Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
                 Text(
                     text = "每日推荐",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1
                 )
                 Text(
                     text = "根据你的口味 · ${today.monthValue}月${today.dayOfMonth}日",
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = SurfaceOverlay.copy(alpha = 0.7f),
                     fontSize = 12.sp,
                     maxLines = 1,
                     modifier = Modifier.padding(top = 2.dp)
@@ -235,7 +239,7 @@ private fun DailySpotlightCard(
         ) {
             Text(
                 text = trackLine,
-                color = Color.White.copy(alpha = 0.75f),
+                color = SurfaceOverlay.copy(alpha = 0.75f),
                 fontSize = 12.sp,
                 lineHeight = 17.sp,
                 maxLines = 2,

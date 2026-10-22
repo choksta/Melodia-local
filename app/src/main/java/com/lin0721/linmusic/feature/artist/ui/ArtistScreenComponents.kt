@@ -31,6 +31,7 @@ import com.lin0721.linmusic.core.model.ArtistAlbum
 import com.lin0721.linmusic.core.model.ArtistInfo
 import java.text.NumberFormat
 import java.util.Locale
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 @Composable
 fun SimilarArtistCard(
@@ -50,7 +51,7 @@ fun SimilarArtistCard(
             modifier = Modifier
                 .size(90.dp)
                 .clip(CircleShape)
-                .border(1.dp, Color.White.copy(alpha = 0.1f), CircleShape)
+                .border(1.dp, SurfaceOverlay.copy(alpha = 0.1f), CircleShape)
         )
 
         Spacer(Modifier.height(MelodiaSpacing.sm))

@@ -47,6 +47,8 @@ import com.lin0721.linmusic.core.ui.theme.SurfaceDark
 import com.lin0721.linmusic.core.ui.theme.TextGray
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private val PendingGray = Color(0xFF555555)
 
@@ -173,7 +175,7 @@ fun DownloadManagerSheet(
                 ) {
                     Text(
                         text = "下载管理",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.ExtraBold,
                         modifier = Modifier.weight(1f)
@@ -259,7 +261,7 @@ fun DownloadManagerSheet(
     if (showClearFailedDialog) {
         AlertDialog(
             onDismissRequest = { showClearFailedDialog = false },
-            title = { Text("清除失败任务", color = Color.White, fontWeight = FontWeight.Bold) },
+            title = { Text("清除失败任务", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
                     text = if (counts.failed > 0) "确定清除全部 ${counts.failed} 首失败的下载任务吗？" else "确定清除全部失败的下载任务吗？",
@@ -280,7 +282,7 @@ fun DownloadManagerSheet(
             },
             dismissButton = {
                 MelodiaTextButton(onClick = { showClearFailedDialog = false }) {
-                    Text("取消", color = Color.White)
+                    Text("取消", color = MaterialTheme.colorScheme.onSurface)
                 }
             },
             containerColor = SurfaceDark,
@@ -403,7 +405,7 @@ private fun EditHeader(selectedCount: Int, allSelected: Boolean, onToggleAll: ()
         TextAction(if (allSelected) "全不选" else "全选", Color.White, onToggleAll)
         Text(
             text = if (selectedCount > 0) "已选 $selectedCount 项" else "选择任务",
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -432,7 +434,7 @@ private fun SummaryCard(
             .padding(14.dp)
     ) {
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(text = "${counts.settled}", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            Text(text = "${counts.settled}", color = MaterialTheme.colorScheme.onSurface, fontSize = 26.sp, fontWeight = FontWeight.Bold)
             Text(
                 text = " / ${counts.total} 首",
                 color = MutedText,
@@ -524,7 +526,7 @@ private fun ActionPill(
         modifier = modifier
             .height(36.dp)
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.White.copy(alpha = 0.08f))
+            .background(SurfaceOverlay.copy(alpha = 0.08f))
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -543,7 +545,7 @@ private fun TabChip(text: String, selected: Boolean, accent: Color?, onClick: ()
         modifier = Modifier
             .height(32.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(if (selected) Color.White else Color.White.copy(alpha = 0.08f))
+            .background(if (selected) Color.White else SurfaceOverlay.copy(alpha = 0.08f))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center
@@ -580,7 +582,7 @@ private fun GroupHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,

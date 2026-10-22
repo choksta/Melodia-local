@@ -51,6 +51,7 @@ import com.lin0721.linmusic.feature.recognition.data.MAX_RECOGNITION_HISTORY
 import com.lin0721.linmusic.feature.recognition.domain.RecognitionHistoryEntry
 import com.lin0721.linmusic.feature.recognition.domain.RecognitionNowPlaying
 import java.time.ZoneId
+import androidx.compose.material3.MaterialTheme
 
 @Composable
 internal fun RecognitionHistoryPage(
@@ -91,7 +92,7 @@ internal fun RecognitionHistoryPage(
     if (confirmClear) {
         AlertDialog(
             onDismissRequest = { confirmClear = false },
-            title = { Text("清空识别历史", color = Color.White, fontWeight = FontWeight.Bold) },
+            title = { Text("清空识别历史", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
             text = { Text("确定要清空全部 ${history.size} 条识别记录吗？", color = TextGray, fontSize = 14.sp) },
             confirmButton = {
                 MelodiaTextButton(
@@ -106,7 +107,7 @@ internal fun RecognitionHistoryPage(
             },
             dismissButton = {
                 MelodiaTextButton(onClick = { confirmClear = false }) {
-                    Text("取消", color = Color.White)
+                    Text("取消", color = MaterialTheme.colorScheme.onSurface)
                 }
             },
             containerColor = SurfaceDark,
@@ -127,7 +128,7 @@ private fun HistoryList(
             item(key = "header_${section.label}") {
                 Text(
                     text = section.label,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(

@@ -34,6 +34,7 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.PillRadius
 import com.lin0721.linmusic.core.ui.theme.TextGray
 import com.lin0721.linmusic.feature.profile.domain.ProfileListenRankItem
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private val RANK_SUB_TABS = listOf("所有时间", "最近一周")
 
@@ -112,13 +113,13 @@ private fun ProfileRankSubTabs(
                     .height(36.dp)
                     .pressable(MelodiaPress.Pill) { onSubTabSelected(index) }
                     .clip(RoundedCornerShape(PillRadius))
-                    .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.1f))
+                    .background(if (isSelected) MaterialTheme.colorScheme.primary else SurfaceOverlay.copy(alpha = 0.1f))
                     .padding(horizontal = 18.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = title,
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.LightGray,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                 )

@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.sp
 import com.lin0721.linmusic.core.ui.interaction.pressable
 import com.lin0721.linmusic.core.ui.theme.MelodiaPress
 import com.lin0721.linmusic.core.ui.theme.PillRadius
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // ────────────────────────────────────────────────────────────────────────────
 // 听歌排行时间范围筛选行
@@ -51,14 +53,14 @@ fun PlaylistRecordFilterRow(
                     }
                     .clip(RoundedCornerShape(PillRadius))
                     .background(
-                        if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.1f)
+                        if (isSelected) MaterialTheme.colorScheme.primary else SurfaceOverlay.copy(alpha = 0.1f)
                     )
                     .padding(horizontal = 18.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = filter,
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.LightGray,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 14.sp
                 )
             }

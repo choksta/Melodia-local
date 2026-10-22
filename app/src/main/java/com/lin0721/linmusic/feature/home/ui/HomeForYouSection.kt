@@ -45,6 +45,7 @@ import com.lin0721.linmusic.core.ui.theme.RadiusCompact
 import com.lin0721.linmusic.core.ui.theme.TextGray
 import com.lin0721.linmusic.feature.home.data.PersonalizedPlaylist
 import com.lin0721.linmusic.feature.home.domain.ToplistInfo
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 一个功能入口。这几个功能没有对应的封面资源，一律用策展色表达，
 // 不再从推荐歌单里借图——借来的封面跟点进去的功能毫无关系。
@@ -164,7 +165,7 @@ private fun ForYouCard(entry: ForYouEntry, modifier: Modifier = Modifier) {
                     .matchParentSize()
                     .background(
                         Brush.radialGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.22f), Color.Transparent),
+                            colors = listOf(SurfaceOverlay.copy(alpha = 0.22f), Color.Transparent),
                             center = Offset.Zero,
                             radius = 300f
                         )
@@ -175,7 +176,7 @@ private fun ForYouCard(entry: ForYouEntry, modifier: Modifier = Modifier) {
             Icon(
                 imageVector = entry.icon,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.15f),
+                tint = SurfaceOverlay.copy(alpha = 0.15f),
                 modifier = Modifier
                     .size(96.dp)
                     .align(Alignment.TopEnd)
@@ -203,7 +204,7 @@ private fun ForYouCard(entry: ForYouEntry, modifier: Modifier = Modifier) {
                     .align(Alignment.BottomStart)
                     .padding(bottom = 14.dp)
                     .fillMaxWidth(0.85f)
-                    .background(Color.White.copy(alpha = 0.92f))
+                    .background(SurfaceOverlay.copy(alpha = 0.92f))
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             )
         }

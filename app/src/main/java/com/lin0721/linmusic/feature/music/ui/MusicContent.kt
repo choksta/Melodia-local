@@ -52,6 +52,8 @@ import com.lin0721.linmusic.feature.home.ui.LoadingIndicator
 import com.lin0721.linmusic.feature.music.domain.MusicStyle
 import com.lin0721.linmusic.feature.music.domain.StylePortrait
 import com.lin0721.linmusic.feature.music.domain.StylePreference
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private val TileGap = 10.dp
 // 偏好与全部曲风共用同一比例，随列宽等比缩放
@@ -208,7 +210,7 @@ private fun TileLabel(title: String, subtitle: String, modifier: Modifier = Modi
     Column(modifier = modifier.padding(12.dp)) {
         Text(
             text = title,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 17.sp,
             fontWeight = FontWeight.ExtraBold,
             maxLines = 1,
@@ -217,7 +219,7 @@ private fun TileLabel(title: String, subtitle: String, modifier: Modifier = Modi
         if (subtitle.isNotBlank()) {
             Text(
                 text = subtitle,
-                color = Color.White.copy(alpha = 0.7f),
+                color = SurfaceOverlay.copy(alpha = 0.7f),
                 fontSize = 11.5.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,

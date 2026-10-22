@@ -62,6 +62,8 @@ import kotlin.math.min
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 有效屏幕高度低于该值（dp）视为低高度屏幕
 private const val SHORT_SCREEN_HEIGHT_DP = 480
@@ -241,7 +243,7 @@ fun PlayQueueSheet(
     if (showClearConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showClearConfirmDialog = false },
-            title = { Text("清空播放队列", color = Color.White, fontWeight = FontWeight.Bold) },
+            title = { Text("清空播放队列", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
             text = { Text("确定要清空播放队列吗？", color = TextGray, fontSize = 14.sp) },
             confirmButton = {
                 MelodiaTextButton(
@@ -256,7 +258,7 @@ fun PlayQueueSheet(
             },
             dismissButton = {
                 MelodiaTextButton(onClick = { showClearConfirmDialog = false }) {
-                    Text("取消", color = Color.White)
+                    Text("取消", color = MaterialTheme.colorScheme.onSurface)
                 }
             },
             containerColor = SurfaceDark,
@@ -296,7 +298,7 @@ fun PlayQueueSheet(
             )
 
             HorizontalDivider(
-                color = Color.White.copy(alpha = 0.08f),
+                color = SurfaceOverlay.copy(alpha = 0.08f),
                 modifier = Modifier.padding(horizontal = MelodiaSpacing.md)
             )
 
@@ -547,7 +549,7 @@ private fun QueueHeader(
     ) {
         Text(
             "队列",
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f)
@@ -618,7 +620,7 @@ private fun PlayModeInfoRow(
         ) {
             Icon(icon, contentDescription = null, tint = NeteaseRed, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
-            Text(label, color = Color.White, fontSize = 12.sp)
+            Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
         }
         if (!playContext.isNullOrBlank() && !isRoaming && !isIntelligence) {
             Spacer(Modifier.width(12.dp))
@@ -695,7 +697,7 @@ private fun BottomActionRow(
                     isIntelligence -> "关闭心动模式"
                     else -> "随机播放"
                 },
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 13.sp
             )
         }
@@ -714,7 +716,7 @@ private fun BottomActionRow(
         ) {
             Icon(Icons.Outlined.Timer, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text(timerText, color = Color.White, fontSize = 13.sp)
+            Text(timerText, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
         }
     }
 }

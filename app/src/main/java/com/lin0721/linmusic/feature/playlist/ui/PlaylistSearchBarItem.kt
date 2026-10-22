@@ -26,6 +26,8 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.RadiusCompact
 import com.lin0721.linmusic.core.ui.theme.darken
 import com.lin0721.linmusic.core.ui.theme.uiTween
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private val SearchBarHeight = 40.dp
 
@@ -70,11 +72,11 @@ fun SearchBarItem(
                     .fillMaxWidth()
                     .height(SearchBarHeight)
                     .clip(RoundedCornerShape(RadiusCompact))
-                    .background(Color.White.copy(alpha = 0.12f)),
+                    .background(SurfaceOverlay.copy(alpha = 0.12f)),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Spacer(Modifier.width(14.dp))
-                Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Search, null, tint = SurfaceOverlay.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(MelodiaSpacing.sm))
                 androidx.compose.foundation.text.BasicTextField(
                     value         = query,
@@ -87,7 +89,7 @@ fun SearchBarItem(
                     cursorBrush = SolidColor(Color.White),
                     decorationBox = { inner ->
                         Box(contentAlignment = Alignment.CenterStart) {
-                            if (query.isEmpty()) Text(placeholder, color = Color.White, fontSize = 14.sp)
+                            if (query.isEmpty()) Text(placeholder, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                             inner()
                         }
                     },

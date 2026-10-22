@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lin0721.linmusic.core.model.ArtistDetailInfo
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 顶占位透明高，用于显示出大图 Header，底部叠加歌手名与译名
 @Composable
@@ -66,7 +67,7 @@ fun ArtistNameSection(artist: ArtistDetailInfo, progress: Float, tintColor: Colo
             if (!chineseName.isNullOrBlank()) {
                 Text(
                     text = chineseName,
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = SurfaceOverlay.copy(alpha = 0.8f),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )

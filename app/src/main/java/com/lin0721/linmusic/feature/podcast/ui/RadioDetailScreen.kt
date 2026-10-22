@@ -69,6 +69,7 @@ import com.lin0721.linmusic.feature.podcast.domain.formatProgramDuration
 import com.lin0721.linmusic.feature.podcast.domain.formatSubCount
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.koin.androidx.compose.koinViewModel
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 电台详情页：封面居中大图 + 主播 + 订阅数，下面是带期号的节目列表
 @Composable
@@ -255,7 +256,7 @@ private fun RadioDetailHeader(
                 }
                 Text(
                     text = detail.name,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.ExtraBold,
                     textAlign = TextAlign.Center,
@@ -319,7 +320,7 @@ private fun RadioDetailHeader(
                 )
                 Text(
                     text = playLabel,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 13.5.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(start = 7.dp)
@@ -338,9 +339,9 @@ private fun RadioDetailHeader(
                     ) { onToggleSubscribe() }
                     .then(
                         if (detail.subscribed) {
-                            Modifier.border(1.dp, Color.White.copy(alpha = 0.28f), CircleShape)
+                            Modifier.border(1.dp, SurfaceOverlay.copy(alpha = 0.28f), CircleShape)
                         } else {
-                            Modifier.background(Color.White.copy(alpha = 0.14f))
+                            Modifier.background(SurfaceOverlay.copy(alpha = 0.14f))
                         }
                     )
                     .padding(horizontal = 18.dp),
@@ -350,7 +351,7 @@ private fun RadioDetailHeader(
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 } else {
                     Text(
@@ -458,7 +459,7 @@ private fun RadioProgramRow(program: PodcastProgram, progress: PodcastProgressEn
                     progress = { progress.fraction },
                     modifier = Modifier.padding(top = 6.dp).fillMaxWidth().height(2.dp),
                     color = MaterialTheme.colorScheme.primary,
-                    trackColor = Color.White.copy(alpha = 0.16f)
+                    trackColor = SurfaceOverlay.copy(alpha = 0.16f)
                 )
             }
         }

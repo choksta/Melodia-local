@@ -11,6 +11,8 @@ import com.lin0721.linmusic.core.download.toToastMessage
 import com.lin0721.linmusic.feature.library.data.LibraryPreferences
 import com.lin0721.linmusic.core.download.yearFromEpochMillis
 import com.lin0721.linmusic.core.log.AppLogger
+import com.lin0721.linmusic.core.model.PlaylistDetail
+import com.lin0721.linmusic.core.model.Track
 import com.lin0721.linmusic.core.userartist.UserArtistRepository
 import com.lin0721.linmusic.feature.create.data.CreateRepository
 import com.lin0721.linmusic.feature.create.data.playlistPrivacyOf
@@ -740,11 +742,7 @@ class LibraryViewModel(
                         _toastEvent.emit(it.toUserMessage(resourceProvider))
                         return@launch
                     }
-                    val tracks = if (!isAlbum && detail.trackIds.size > detail.tracks.size) {
-                        playlistRepository.loadAllTracks(detail).first().getOrElse { detail.tracks }
-                    } else {
-                        detail.tracks
-                    }
+                    val tracks = detail.tracks
                     if (tracks.isEmpty()) {
                         _toastEvent.emit(if (isAlbum) "该专辑没有可播放的歌曲" else "该歌单没有可播放的歌曲")
                         return@launch
@@ -752,6 +750,11 @@ class LibraryViewModel(
                     val queueItems = tracks.map { QueueItem(it.id, it.name, it.ar.joinToString("/") { ar -> ar.name }, it.al.picUrl) }
                     val kind = if (isAlbum) PlaySource.Kind.ALBUM else PlaySource.Kind.PLAYLIST
                     playerManager.playQueue(queueItems, 0, detail.name, PlaySource(kind, detail.id, detail.name, detail.coverImgUrl))
+                    // 超过1000首的歌单先用手上这批起播：旧实现在这里等 song/detail 把剩余批次（每批约3MB）全部拉完，
+                    // 「我喜欢的音乐」这种上千首的歌单会先卡好几秒才出声。剩余曲目改为后台补全后追加到队列尾部。
+                    if (!isAlbum && detail.trackIds.size > tracks.size) {
+                        appendRemainingTracksInBackground(detail, tracks, kind)
+                    }
                 }
                 LibraryItemType.ARTIST -> {
                     artistRepository.getArtistTopSongs(id).first().onSuccess { songs ->
@@ -766,6 +769,25 @@ class LibraryViewModel(
                     }
                 }
             }
+        }
+    }
+
+    // 大歌单起播后把剩余曲目补全并追加到队列尾部；期间用户换了播放队列就丢弃结果
+    private fun appendRemainingTracksInBackground(
+        detail: PlaylistDetail,
+        loaded: List<Track>,
+        kind: PlaySource.Kind
+    ) {
+        viewModelScope.launch {
+            val all = playlistRepository.loadAllTracks(detail).first().getOrElse { return@launch }
+            val source = playerManager.playSource.value
+            if (source == null || source.id != detail.id || source.kind != kind) return@launch
+            val loadedIds = loaded.mapTo(HashSet()) { it.id }
+            val rest = all.filterNot { it.id in loadedIds }
+            if (rest.isEmpty()) return@launch
+            playerManager.appendToQueue(
+                rest.map { QueueItem(it.id, it.name, it.ar.joinToString("/") { ar -> ar.name }, it.al.picUrl) }
+            )
         }
     }
 

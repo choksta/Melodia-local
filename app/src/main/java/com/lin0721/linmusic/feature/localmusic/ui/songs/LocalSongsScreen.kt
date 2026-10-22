@@ -67,8 +67,11 @@ import com.lin0721.linmusic.feature.localmusic.ui.LocalMusicViewModel
 import com.lin0721.linmusic.feature.localmusic.ui.LocalTrackActionsHost
 import com.lin0721.linmusic.feature.localmusic.ui.components.LocalTrackRow
 import org.koin.androidx.compose.koinViewModel
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
+import androidx.compose.runtime.ReadOnlyComposable
 
-private val DividerColor = Color.White.copy(alpha = 0.08f)
+private val DividerColor: Color
+    @Composable @ReadOnlyComposable get() = SurfaceOverlay.copy(alpha = 0.08f)
 
 @Composable
 fun LocalSongsScreen(

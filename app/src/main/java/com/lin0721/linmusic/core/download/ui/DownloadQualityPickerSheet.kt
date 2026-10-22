@@ -42,6 +42,7 @@ import com.lin0721.linmusic.core.ui.theme.NeteaseRed
 import com.lin0721.linmusic.core.ui.theme.SvipGold
 import com.lin0721.linmusic.core.ui.theme.TextGray
 import org.koin.compose.koinInject
+import androidx.compose.material3.MaterialTheme
 
 // VIP 与 SVIP 专属档位
 private val VIP_TIERS = setOf("lossless", "hires")
@@ -134,7 +135,7 @@ fun DownloadQualityPickerSheet(
             Column(modifier = Modifier.padding(horizontal = MelodiaSpacing.sm)) {
                 Text(
                     text = "选择下载音质",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
@@ -224,7 +225,7 @@ private fun QualityRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = title,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold
                 )

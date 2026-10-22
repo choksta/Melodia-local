@@ -150,7 +150,7 @@ fun FollowListScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = user.nickname,
-                                        color = Color.White,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Medium,
                                         maxLines = 1,

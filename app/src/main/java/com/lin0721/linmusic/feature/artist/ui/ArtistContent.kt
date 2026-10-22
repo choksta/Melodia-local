@@ -98,7 +98,9 @@ fun ArtistContent(
 
     var showMoreMenuSheet by remember { mutableStateOf(false) }
 
-    var dominantColor by remember { mutableStateOf(CoverPlaceholderDark) }
+    // CoverPlaceholderDark 已改为按主题取值，remember 的 lambda 不是 Composable 上下文，先取值再传入
+    val coverPlaceholder = CoverPlaceholderDark
+    var dominantColor by remember { mutableStateOf(coverPlaceholder) }
 
     // 背景折叠临界点
     val collapseThresholdPx = with(density) { 320.dp.toPx() }

@@ -49,6 +49,7 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.SurfaceDark
 import com.lin0721.linmusic.core.ui.theme.melodiaStatusBarTopPadding
 import com.lin0721.linmusic.core.ui.theme.uiTween
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 歌曲多选在列表行上的状态与回调，歌单页与歌手页共用
 @Immutable
@@ -134,7 +135,7 @@ fun SelectionActionBar(
             )
             .clip(shape)
             .background(SurfaceDark)
-            .border(0.5.dp, Color.White.copy(alpha = 0.08f), shape)
+            .border(0.5.dp, SurfaceOverlay.copy(alpha = 0.08f), shape)
     ) {
         actions.forEach { action ->
             Column(

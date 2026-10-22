@@ -54,6 +54,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.MaterialTheme
 
 // 全屏主评论页：全屏 overlay 覆盖层，展示完整评论流并内嵌底部输入栏
 @Composable
@@ -102,7 +103,7 @@ fun CommentFullScreen(
             }
             Text(
                 text = titleText,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -145,7 +146,7 @@ fun CommentFullScreen(
                             onClick = onRetry,
                             colors = ButtonDefaults.buttonColors(containerColor = NeteaseRed)
                         ) {
-                            Text("重试", color = Color.White)
+                            Text("重试", color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }

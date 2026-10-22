@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.lin0721.linmusic.core.ui.theme.DragHandleShape
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // ModalBottomSheet 顶部拖拽把手，供各处 dragHandle 参数复用
 @Composable
@@ -19,7 +20,7 @@ fun MelodiaDragHandle() {
         Surface(
             modifier = Modifier.width(40.dp).height(4.dp),
             shape = DragHandleShape,
-            color = Color.White.copy(alpha = 0.3f)
+            color = SurfaceOverlay.copy(alpha = 0.3f)
         ) {}
     }
 }

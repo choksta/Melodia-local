@@ -29,6 +29,48 @@ import com.lin0721.linmusic.core.ui.theme.BottomSheetShape
 import com.lin0721.linmusic.core.ui.theme.LocalMelodiaWindowSizeClass
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.MelodiaWindowSizeClass
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import com.lin0721.linmusic.core.ui.theme.SurfaceLight
+
+// 主题模式的三档选项
+private val ThemeModes = listOf(
+    SettingsPreferences.THEME_MODE_SYSTEM to "跟随系统",
+    SettingsPreferences.THEME_MODE_LIGHT to "浅色",
+    SettingsPreferences.THEME_MODE_DARK to "深色"
+)
+
+// 明暗主题三档切换。选中态用品牌红填充，未选中态用当前主题的表面色，
+// 因此浅色/深色下都不依赖硬编码底色
+@Composable
+private fun ThemeModeSelector(current: String, onSelect: (String) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        ThemeModes.forEach { (key, label) ->
+            val selected = key == current
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (selected) MaterialTheme.colorScheme.primary else SurfaceLight)
+                    .clickable { onSelect(key) }
+                    .padding(vertical = 9.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label,
+                    color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface,
+                    fontSize = 13.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+        }
+    }
+}
 
 private val PlayerPageModes = listOf(
     SettingsPreferences.PLAYER_PAGE_MODE_AUTO to "自动",
@@ -48,6 +90,7 @@ fun ExtensionsSettingsView(viewModel: SettingsViewModel) {
     val sidePlayerPinned by viewModel.sidePlayerPinned.collectAsStateWithLifecycle()
     val tabletImmersiveMode by viewModel.tabletImmersiveMode.collectAsStateWithLifecycle()
     val uiScalePercent by viewModel.uiScalePercent.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val uiAnimationsEnabled by viewModel.uiAnimationsEnabled.collectAsStateWithLifecycle()
     val isExpanded = LocalMelodiaWindowSizeClass.current == MelodiaWindowSizeClass.Expanded
 
@@ -97,7 +140,7 @@ fun ExtensionsSettingsView(viewModel: SettingsViewModel) {
                         subtitle = "当前启用：$enabledItemsSummary",
                         onClick = { showBottomBarSheet = true }
                     )
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                     SettingsSwitchRow(
                         title = "启动默认打开音乐库",
                         subtitle = "冷启动时直接进入音乐库页面",
@@ -115,7 +158,7 @@ fun ExtensionsSettingsView(viewModel: SettingsViewModel) {
                         onClick = { showPlayerModeSheet = true }
                     )
                     if (playerPageMode != SettingsPreferences.PLAYER_PAGE_MODE_FULLSCREEN) {
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                        HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                         SettingsSwitchRow(
                             title = "侧边播放页钉住",
                             subtitle = "关闭后按返回键直接收起侧边播放页",
@@ -124,7 +167,7 @@ fun ExtensionsSettingsView(viewModel: SettingsViewModel) {
                         )
                     }
                     if (isExpanded) {
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                        HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                         SettingsSwitchRow(
                             title = "全局沉浸",
                             subtitle = "隐藏系统状态栏与导航栏，边缘滑动呼出",
@@ -137,6 +180,21 @@ fun ExtensionsSettingsView(viewModel: SettingsViewModel) {
 
             item {
                 SettingsGroupCard(SettingsSubMenu.EXTENSIONS.sectionTitles[4]) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp)
+                    ) {
+                        Text("主题", color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp)
+                        Text(
+                            text = "跟随系统时随系统深色模式自动切换",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        ThemeModeSelector(current = themeMode, onSelect = { viewModel.updateThemeMode(it) })
+                    }
+                    HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                     // 松手后才应用（会重建界面）；拖动中不应用，避免滑块在手指下移位
                     var pendingPercent by remember { mutableStateOf<Int?>(null) }
                     LaunchedEffect(uiScalePercent) { pendingPercent = null }
@@ -176,7 +234,7 @@ fun ExtensionsSettingsView(viewModel: SettingsViewModel) {
                             }
                         )
                     }
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = SurfaceOverlay.copy(alpha = 0.08f))
                     SettingsSwitchRow(
                         title = "界面过渡动画",
                         subtitle = "关闭后切页、面板展开收起等直接切换，不影响歌词滚动",

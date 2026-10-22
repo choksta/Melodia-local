@@ -13,6 +13,7 @@ import com.lin0721.linmusic.core.ui.components.MelodiaTextButton
 import com.lin0721.linmusic.core.ui.theme.NeteaseRed
 import com.lin0721.linmusic.core.ui.theme.SurfaceDark
 import com.lin0721.linmusic.core.ui.theme.TextGray
+import androidx.compose.material3.MaterialTheme
 
 // 删除云盘歌曲二次确认，视觉范式对齐 PlayQueueSheet 的清空队列弹窗，不做撤销缓冲
 @Composable
@@ -24,7 +25,7 @@ fun CloudDeleteConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isDeleting) onDismiss() },
-        title = { Text("删除云盘歌曲", color = Color.White, fontWeight = FontWeight.Bold) },
+        title = { Text("删除云盘歌曲", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
         text = { Text("确定要删除「$songName」吗？删除后无法恢复。", color = TextGray, fontSize = 14.sp) },
         confirmButton = {
             MelodiaTextButton(
@@ -37,7 +38,7 @@ fun CloudDeleteConfirmDialog(
         },
         dismissButton = {
             MelodiaTextButton(onClick = onDismiss, enabled = !isDeleting) {
-                Text("取消", color = Color.White)
+                Text("取消", color = MaterialTheme.colorScheme.onSurface)
             }
         },
         containerColor = SurfaceDark,

@@ -39,6 +39,7 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.feature.recent.domain.RecentSong
 import com.lin0721.linmusic.feature.recent.domain.groupByPlayDay
 import org.koin.androidx.compose.koinViewModel
+import androidx.compose.material3.MaterialTheme
 
 private const val SKELETON_ROW_COUNT = 8
 
@@ -193,7 +194,7 @@ private fun RecentPlayList(
 private fun DayHeader(label: String) {
     Text(
         text = label,
-        color = Color.White,
+        color = MaterialTheme.colorScheme.onSurface,
         fontSize = 18.sp,
         fontWeight = FontWeight.Bold,
         modifier = Modifier

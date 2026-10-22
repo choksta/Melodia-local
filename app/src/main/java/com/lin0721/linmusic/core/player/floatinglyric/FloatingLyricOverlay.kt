@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import com.lin0721.linmusic.core.log.AppLogger
 import com.lin0721.linmusic.feature.player.ui.KaraokeLyricRow
 import kotlinx.coroutines.delay
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private const val TAG = "FloatingLyricOverlay"
 
@@ -109,7 +110,7 @@ fun FloatingLyricOverlay(
     val touched: () -> Unit = { interaction++ }
 
     val played = parseColor(style.playedColor, Color.White)
-    val unplayed = parseColor(style.unplayedColor, Color.White.copy(alpha = 0.6f))
+    val unplayed = parseColor(style.unplayedColor, SurfaceOverlay.copy(alpha = 0.6f))
     val density = LocalDensity.current
     val shadow = style.shadowArgb()?.let { argb ->
         with(density) {
@@ -230,11 +231,11 @@ private fun ResizeHandle(handle: LyricResizeHandle, actions: FloatingLyricAction
             Icon(
                 Icons.Rounded.OpenInFull,
                 contentDescription = "缩放歌词",
-                tint = Color.White.copy(alpha = 0.8f),
+                tint = SurfaceOverlay.copy(alpha = 0.8f),
                 modifier = Modifier.size(14.dp).rotate(90f)
             )
         } else {
-            Box(Modifier.width(4.dp).height(24.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.7f)))
+            Box(Modifier.width(4.dp).height(24.dp).clip(CircleShape).background(SurfaceOverlay.copy(alpha = 0.7f)))
         }
     }
 }
@@ -258,7 +259,7 @@ private fun ControlBar(isPlaying: Boolean, actions: FloatingLyricActions, touche
             touched()
             actions.onNext()
         }
-        Box(Modifier.padding(horizontal = 4.dp).width(1.dp).height(18.dp).background(Color.White.copy(alpha = 0.25f)))
+        Box(Modifier.padding(horizontal = 4.dp).width(1.dp).height(18.dp).background(SurfaceOverlay.copy(alpha = 0.25f)))
         BarButton(Icons.Rounded.Lock, "锁定歌词", actions.onToggleLock)
         BarButton(Icons.Rounded.Settings, "歌词设置", actions.onOpenSettings)
         BarButton(Icons.Rounded.Close, "关闭悬浮歌词", actions.onClose)

@@ -47,6 +47,7 @@ import com.lin0721.linmusic.core.ui.theme.RadiusCompact
 import com.lin0721.linmusic.core.ui.theme.TextGray
 import com.lin0721.linmusic.feature.cloud.domain.CloudSong
 import kotlinx.coroutines.launch
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 云盘歌曲的「更多操作」面板
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,7 +96,7 @@ fun CloudSongOptionsSheet(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = song.name,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -113,7 +114,7 @@ fun CloudSongOptionsSheet(
             }
 
             HorizontalDivider(
-                color = Color.White.copy(alpha = 0.08f),
+                color = SurfaceOverlay.copy(alpha = 0.08f),
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = MelodiaSpacing.sm)
             )
 
@@ -132,11 +133,11 @@ fun CloudSongOptionsSheet(
                 Icon(
                     imageVector = if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                     contentDescription = null,
-                    tint = if (isLiked) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f)
+                    tint = if (isLiked) MaterialTheme.colorScheme.primary else SurfaceOverlay.copy(alpha = 0.7f)
                 )
                 Text(
                     text = if (isLiked) "取消喜欢" else "喜欢",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 15.sp,
                     modifier = Modifier.padding(start = 16.dp)
                 )
@@ -154,10 +155,10 @@ fun CloudSongOptionsSheet(
                     .padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null, tint = Color.White.copy(alpha = 0.7f))
+                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null, tint = SurfaceOverlay.copy(alpha = 0.7f))
                 Text(
                     text = "添加到歌单",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 15.sp,
                     modifier = Modifier.padding(start = 16.dp)
                 )
@@ -175,10 +176,10 @@ fun CloudSongOptionsSheet(
                     .padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Rounded.Refresh, contentDescription = null, tint = Color.White.copy(alpha = 0.7f))
+                Icon(Icons.Rounded.Refresh, contentDescription = null, tint = SurfaceOverlay.copy(alpha = 0.7f))
                 Text(
                     text = "重新匹配",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 15.sp,
                     modifier = Modifier.padding(start = 16.dp)
                 )

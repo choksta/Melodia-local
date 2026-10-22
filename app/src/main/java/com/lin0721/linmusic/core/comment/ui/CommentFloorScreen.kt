@@ -47,6 +47,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.MaterialTheme
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 楼层详情页：某条评论的完整子回复列表，全屏 overlay，内嵌底部回复输入栏
 @Composable
@@ -87,7 +89,7 @@ fun CommentFloorScreen(
             }
             Text(
                 text = "评论详情",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = MelodiaSpacing.xs)
@@ -111,7 +113,7 @@ fun CommentFloorScreen(
                         onClick = onRetry,
                         colors = ButtonDefaults.buttonColors(containerColor = NeteaseRed)
                     ) {
-                        Text("重试", color = Color.White)
+                        Text("重试", color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
@@ -157,7 +159,7 @@ fun CommentFloorScreen(
                         )
                         HorizontalDivider(
                             modifier = Modifier.padding(vertical = MelodiaSpacing.sm),
-                            color = Color.White.copy(alpha = 0.08f)
+                            color = SurfaceOverlay.copy(alpha = 0.08f)
                         )
                         Text(
                             text = "全部回复 · ${floorState.replies.size}",
@@ -186,7 +188,7 @@ fun CommentFloorScreen(
                         )
                         HorizontalDivider(
                             modifier = Modifier.padding(vertical = MelodiaSpacing.sm),
-                            color = Color.White.copy(alpha = 0.06f)
+                            color = SurfaceOverlay.copy(alpha = 0.06f)
                         )
                     }
                     if (floorState.hasMore) {

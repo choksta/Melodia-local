@@ -77,6 +77,7 @@ import com.lin0721.linmusic.feature.localmusic.ui.components.LocalHeroHeader
 import com.lin0721.linmusic.feature.localmusic.ui.components.LocalPlayShuffleButtons
 import com.lin0721.linmusic.feature.localmusic.ui.components.LocalTrackRow
 import org.koin.androidx.compose.koinViewModel
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 private val PlaylistHeroCoverSize = 132.dp
 
@@ -295,7 +296,7 @@ private fun PlaylistHeroInfo(playlist: LocalPlaylist) {
         Column {
             Text(
                 text = playlist.name,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 3,
@@ -305,7 +306,7 @@ private fun PlaylistHeroInfo(playlist: LocalPlaylist) {
             Text(
                 text = listOfNotNull("本地歌单", "${playlist.tracks.size} 首", minutes.takeIf { it > 0 }?.let { "$it 分钟" })
                     .joinToString(" · "),
-                color = Color.White.copy(alpha = 0.7f),
+                color = SurfaceOverlay.copy(alpha = 0.7f),
                 fontSize = 13.sp,
                 modifier = Modifier.padding(top = MelodiaSpacing.xs)
             )
@@ -336,7 +337,7 @@ private fun EditPlaylistContent(
             }
             Text(
                 text = "编辑歌单",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f).padding(start = MelodiaSpacing.xs)

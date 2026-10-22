@@ -65,6 +65,7 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.height
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // 首页/音乐/播客三个 tab 共用的单排固定吸顶栏（头像与胶囊同排）
 @Composable
@@ -105,7 +106,7 @@ fun HomeSharedHeader(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.15f))
+                            .background(SurfaceOverlay.copy(alpha = 0.15f))
                             .clickable { onAvatarClick() },
                         contentAlignment = Alignment.Center
                     ) {
@@ -259,7 +260,7 @@ private fun FilterPillChip(
     modifier: Modifier = Modifier
 ) {
     val targetBackground = if (selected) activeColor else inactiveColor
-    val targetContent = if (selected) MaterialTheme.colorScheme.onPrimary else Color.LightGray
+    val targetContent = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
     // 动画值无条件求值，避免 animateColors 变化时组合槽位对不上
     val animatedBackground by animateColorAsState(targetValue = targetBackground, animationSpec = uiSpring(), label = "pillBackground")
     val animatedContent by animateColorAsState(targetValue = targetContent, animationSpec = uiSpring(), label = "pillContent")

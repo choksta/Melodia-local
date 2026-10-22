@@ -49,6 +49,7 @@ import com.lin0721.linmusic.core.ui.theme.SurfaceLight
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.uiTween
 import org.koin.androidx.compose.koinViewModel
+import androidx.compose.material3.MaterialTheme
 
 private enum class LoginMode { CHOICE, QR, COOKIE }
 
@@ -172,7 +173,7 @@ private fun LoginChoiceContent(
         text = "登录",
         fontSize = 28.sp,
         fontWeight = FontWeight.ExtraBold,
-        color = Color.White,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.padding(bottom = MelodiaSpacing.sm)
     )
     Text(
@@ -203,7 +204,7 @@ private fun QrLoginContent(
         text = "二维码登录",
         fontSize = 20.sp,
         fontWeight = FontWeight.Bold,
-        color = Color.White,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.padding(bottom = MelodiaSpacing.lg)
     )
 
@@ -250,7 +251,7 @@ private fun QrLoginContent(
         QrLoginState.Expired -> "二维码已过期"
         is QrLoginState.Error -> s.message
     }
-    Text(text = statusText, fontSize = 14.sp, color = Color.LightGray)
+    Text(text = statusText, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
     if (state is QrLoginState.Expired || state is QrLoginState.Error) {
         Spacer(modifier = Modifier.height(MelodiaSpacing.md))
@@ -273,7 +274,7 @@ private fun CookieLoginContent(onSubmit: (String) -> Boolean) {
         text = "Cookie 登录",
         fontSize = 20.sp,
         fontWeight = FontWeight.Bold,
-        color = Color.White,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.padding(bottom = MelodiaSpacing.sm)
     )
     Text(
@@ -315,7 +316,7 @@ private fun CookieLoginContent(onSubmit: (String) -> Boolean) {
         colors = ButtonDefaults.buttonColors(containerColor = NeteaseRed),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 2.dp)
     ) {
-        Text("确认登录", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text("确认登录", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -355,7 +356,7 @@ private fun LoginOptionButton(
                 text = text,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     } else {
@@ -377,14 +378,14 @@ private fun LoginOptionButton(
                 icon,
                 contentDescription = null,
                 modifier = Modifier.size(22.dp),
-                tint = Color.LightGray
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
                 text = text,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }

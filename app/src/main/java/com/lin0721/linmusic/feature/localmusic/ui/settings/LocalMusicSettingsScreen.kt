@@ -48,11 +48,14 @@ import com.lin0721.linmusic.feature.settings.ui.SettingsRow
 import com.lin0721.linmusic.feature.settings.ui.SettingsSwitchRow
 import org.koin.androidx.compose.koinViewModel
 import kotlin.math.roundToInt
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
+import androidx.compose.runtime.ReadOnlyComposable
 
 private const val MAX_MIN_DURATION_SEC = 180
 private const val MIN_DURATION_STEP_SEC = 10
 
-private val DividerColor = Color.White.copy(alpha = 0.08f)
+private val DividerColor: Color
+    @Composable @ReadOnlyComposable get() = SurfaceOverlay.copy(alpha = 0.08f)
 
 @Composable
 fun LocalMusicSettingsScreen(
