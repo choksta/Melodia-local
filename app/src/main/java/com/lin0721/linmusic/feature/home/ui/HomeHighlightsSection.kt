@@ -180,7 +180,8 @@ private fun DailySpotlightCard(
     )
     val today = remember { LocalDate.now() }
     // remember 的 lambda 不是 Composable 上下文，前景色先取值并作为 key
-    val spotCountColor = MaterialTheme.colorScheme.onSurface
+    // 卡片底色是封面取色再压暗，恒为深色，卡内文字必须固定用白
+    val spotCountColor = Color.White
     val trackLine = remember(songs, spotCountColor) {
         buildAnnotatedString {
             withStyle(SpanStyle(color = spotCountColor, fontWeight = FontWeight.Bold)) {
@@ -217,14 +218,14 @@ private fun DailySpotlightCard(
             Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
                 Text(
                     text = "每日推荐",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = Color.White,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1
                 )
                 Text(
                     text = "根据你的口味 · ${today.monthValue}月${today.dayOfMonth}日",
-                    color = SurfaceOverlay.copy(alpha = 0.7f),
+                    color = Color.White.copy(alpha = 0.7f),
                     fontSize = 12.sp,
                     maxLines = 1,
                     modifier = Modifier.padding(top = 2.dp)
@@ -239,7 +240,7 @@ private fun DailySpotlightCard(
         ) {
             Text(
                 text = trackLine,
-                color = SurfaceOverlay.copy(alpha = 0.75f),
+                color = Color.White.copy(alpha = 0.75f),
                 fontSize = 12.sp,
                 lineHeight = 17.sp,
                 maxLines = 2,

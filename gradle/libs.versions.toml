@@ -7,6 +7,7 @@ espressoCore = "3.5.1"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.8.0"
 kotlin = "2.2.10"
+profileinstaller = "1.4.1"
 composeBom = "2026.02.01"
 okhttp = "4.12.0"
 retrofit = "2.11.0"
@@ -124,6 +125,8 @@ android-image-cropper = { group = "com.vanniktech", name = "android-image-croppe
 
 # 二维码生成（登录二维码）
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+
+androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

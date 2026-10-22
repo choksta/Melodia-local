@@ -152,14 +152,14 @@ fun PodcastFilterChip(text: String, selected: Boolean, onClick: () -> Unit) {
             .pressable(MelodiaPress.Pill) { onClick() }
             .clip(CircleShape)
             .then(
-                if (selected) Modifier.background(Color.White)
+                if (selected) Modifier.background(MaterialTheme.colorScheme.onSurface)
                 else Modifier.border(1.dp, SurfaceOverlay.copy(alpha = 0.18f), CircleShape)
             )
             .padding(horizontal = 12.dp, vertical = 5.dp)
     ) {
         Text(
             text = text,
-            color = if (selected) Color(0xFF121212) else Color(0xFFBDBDBD),
+            color = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 11.5.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
         )

@@ -1,0 +1,5 @@
+HSPLcom/lin0721/linmusic/**->**(**)
+HSPLandroidx/compose/runtime/**->**(**)
+HSPLandroidx/compose/ui/**->**(**)
+HSPLandroidx/compose/foundation/**->**(**)
+HSPLkotlinx/coroutines/**->**(**)

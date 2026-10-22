@@ -110,6 +110,8 @@ ksp {
 dependencies {
     implementation(project(":shared"))
     implementation(libs.androidx.core.ktx)
+    // 基线剖面在 Android 9–11 上靠它落地（12+ 由系统安装时直接 dexopt）
+    implementation(libs.androidx.profileinstaller)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)

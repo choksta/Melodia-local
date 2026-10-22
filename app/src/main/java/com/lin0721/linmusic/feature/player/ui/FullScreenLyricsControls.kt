@@ -79,6 +79,7 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.MelodiaWindowSizeClass
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
 
 // ────────────────────────────────────────────────────────────────────────────
 // 全屏歌词操作工具栏（翻译/罗马音切换、分享、快捷歌词设置）
@@ -196,7 +197,8 @@ fun LyricCapsuleSlider(
             .height(38.dp)
             .onSizeChanged { componentWidthPx = it.width.toFloat() }
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.12f))
+            // 滑轨底色：该滑杆被设置页复用，必须用主题遮罩，白色遮罩在浅色页面上不可见
+            .background(SurfaceOverlay.copy(alpha = 0.12f))
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -418,7 +420,7 @@ fun FullScreenLyricsSettingsSheet(
             activeContainerColor = MaterialTheme.colorScheme.primary,
             activeContentColor = MaterialTheme.colorScheme.onPrimary,
             activeBorderColor = Color.Transparent,
-            inactiveContainerColor = Color.White.copy(alpha = 0.08f),
+            inactiveContainerColor = SurfaceOverlay.copy(alpha = 0.08f),
             inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             inactiveBorderColor = Color.Transparent,
             disabledActiveContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f),
