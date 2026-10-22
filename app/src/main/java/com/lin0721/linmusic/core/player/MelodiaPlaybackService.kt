@@ -73,6 +73,11 @@ class MelodiaPlaybackService : MediaSessionService() {
     // 悬浮歌词开启且已锁定时，通知栏提供解锁按钮
     private var isFloatingLyricLocked = false
 
+    // 数据源工厂在播放线程上被调用，那里不能做阻塞读取（原实现每次起播 runBlocking 两次读 DataStore）。
+    // 这里缓存成字段：服务创建时取一次初值，之后跟随配置变化，播放线程只读字段
+    @Volatile private var streamCacheEnabled = true
+    @Volatile private var audioCacheMaxSizeBytes = 500L * 1024 * 1024
+
     private var player: Player? = null
     private var crossfadePlayer: CrossfadePlayer? = null
     private var mediaSession: MediaSession? = null
@@ -136,6 +141,16 @@ class MelodiaPlaybackService : MediaSessionService() {
             }
         }
 
+        // 缓存相关的两项配置：初值读一次，之后由 collect 保持最新（避免起播路径上的阻塞读取）
+        streamCacheEnabled = runBlocking { settingsPreferences.streamCacheEnabled.first() }
+        audioCacheMaxSizeBytes = runBlocking { settingsPreferences.audioCacheMaxSize.first() }
+        serviceScope.launch {
+            settingsPreferences.streamCacheEnabled.collect { streamCacheEnabled = it }
+        }
+        serviceScope.launch {
+            settingsPreferences.audioCacheMaxSize.collect { audioCacheMaxSizeBytes = it }
+        }
+
         serviceScope.launch {
             settingsPreferences.showLockscreen.collect { enabled ->
                 isShowLockscreenEnabled = enabled
@@ -158,14 +173,8 @@ class MelodiaPlaybackService : MediaSessionService() {
 
         // 动态代理数据源，每次请求新数据源时获取最新配置并创建对应的源
         val dynamicDataSourceFactory = androidx.media3.datasource.DataSource.Factory {
-            val isCacheEnabled = runBlocking {
-                settingsPreferences.streamCacheEnabled.first()
-            }
-            if (isCacheEnabled) {
-                val maxSize = runBlocking {
-                    settingsPreferences.audioCacheMaxSize.first()
-                }
-                val cache = AudioCacheManager.getCache(this@MelodiaPlaybackService, maxSize)
+            if (streamCacheEnabled) {
+                val cache = AudioCacheManager.getCache(this@MelodiaPlaybackService, audioCacheMaxSizeBytes)
                 CacheDataSource.Factory()
                     .setCache(cache)
                     .setUpstreamDataSourceFactory(defaultDataSourceFactory)
