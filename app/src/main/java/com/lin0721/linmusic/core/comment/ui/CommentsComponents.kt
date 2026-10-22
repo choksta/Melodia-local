@@ -82,7 +82,7 @@ fun CommentsPreviewCard(
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.Comment,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(

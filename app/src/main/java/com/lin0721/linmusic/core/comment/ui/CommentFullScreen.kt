@@ -98,7 +98,7 @@ fun CommentFullScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = "返回",
-                    tint = Color.White
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
             Text(

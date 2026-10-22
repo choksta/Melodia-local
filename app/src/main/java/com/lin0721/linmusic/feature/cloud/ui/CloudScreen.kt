@@ -121,7 +121,7 @@ fun CloudScreen(
                         Icon(
                             if (isSearching) Icons.Rounded.Close else Icons.Rounded.Search,
                             contentDescription = if (isSearching) "关闭搜索" else "搜索",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }

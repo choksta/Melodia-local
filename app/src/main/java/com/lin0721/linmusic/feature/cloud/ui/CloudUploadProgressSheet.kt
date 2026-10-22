@@ -190,7 +190,7 @@ private fun UploadTaskRow(task: UploadTask, onRetry: () -> Unit) {
                 Icon(
                     Icons.Rounded.Refresh,
                     contentDescription = "重试",
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(18.dp)
                 )
             }

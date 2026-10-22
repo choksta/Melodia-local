@@ -109,7 +109,7 @@ fun LoginBottomSheet(
                         viewModel.resetQrState()
                         mode = LoginMode.CHOICE
                     }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回", tint = Color.White)
+                        Icon(Icons.Default.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
@@ -349,7 +349,7 @@ private fun LoginOptionButton(
                 icon,
                 contentDescription = null,
                 modifier = Modifier.size(22.dp),
-                tint = Color.White
+                tint = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(

@@ -106,6 +106,9 @@ import com.lin0721.linmusic.core.ui.theme.rememberMelodiaPlayerPanelWidth
 import com.lin0721.linmusic.core.ui.theme.ProvideMelodiaContentSizeClass
 import com.lin0721.linmusic.core.ui.theme.LocalMelodiaSystemBarsConsumed
 import kotlin.math.roundToInt
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.lin0721.linmusic.core.ui.theme.LocalIsDarkTheme
 
 private val SidebarWidth = 310.dp
 
@@ -130,8 +133,19 @@ private class PanelRevealShape(
 fun MelodiaApp() {
     val motion = LocalUiMotion.current
     val viewModel: HomeViewModel = koinViewModel()
+
     val libraryViewModel: LibraryViewModel = koinViewModel()
     val settingsPreferences: SettingsPreferences = koinInject()
+    // 侧栏明暗切换：写入偏好后由 MainActivity 重建主题，无需重启
+    val themeToggleScope = rememberCoroutineScope()
+    val isDarkTheme = LocalIsDarkTheme.current
+    val onToggleTheme: () -> Unit = {
+        themeToggleScope.launch {
+            settingsPreferences.saveThemeMode(
+                if (isDarkTheme) SettingsPreferences.THEME_MODE_LIGHT else SettingsPreferences.THEME_MODE_DARK
+            )
+        }
+    }
     val showCreateEntry by settingsPreferences.showCreateEntry.collectAsStateWithLifecycle(initialValue = true)
     val bottomBarLayout by settingsPreferences.bottomBarLayout.collectAsStateWithLifecycle(initialValue = BottomBarLayout.DEFAULT)
     val bottomBarIconOnly by settingsPreferences.bottomBarIconOnly.collectAsStateWithLifecycle(initialValue = false)
@@ -425,7 +439,9 @@ fun MelodiaApp() {
                     onNavigateToCloud = { navigation.openCloud() },
                     onNavigateToDownloads = { navigation.openDownloads() },
                     onNavigateToMessage = { navigation.openMessage() },
-                    onNavigateToSettings = { navigation.navigateTo(Screen.Settings) }
+                    onNavigateToSettings = { navigation.navigateTo(Screen.Settings) },
+                    isDarkTheme = isDarkTheme,
+                    onToggleTheme = onToggleTheme
                 )
             }
         }

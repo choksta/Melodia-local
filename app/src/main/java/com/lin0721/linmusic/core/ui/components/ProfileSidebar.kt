@@ -36,6 +36,8 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.PillRadiusLarge
 import androidx.compose.material3.MaterialTheme
 import com.lin0721.linmusic.core.ui.theme.SurfaceOverlay
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.DarkMode
 
 
  // 侧边栏
@@ -50,7 +52,9 @@ fun ProfileSidebar(
     onNavigateToCloud: () -> Unit,
     onNavigateToDownloads: () -> Unit,
     onNavigateToMessage: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    isDarkTheme: Boolean,
+    onToggleTheme: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -140,6 +144,12 @@ fun ProfileSidebar(
                 onClick = { onDismiss(); onNavigateToMessage() }
             )
             SidebarMenuItem(
+                // 展示的是"切过去之后"的目标形态：当前深色显示月亮→浅色，反之显示太阳
+                icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+                title = if (isDarkTheme) "切换到浅色模式" else "切换到深色模式",
+                onClick = { onDismiss(); onToggleTheme() }
+            )
+            SidebarMenuItem(
                 icon = Icons.Outlined.Settings,
                 title = "设置和隐私",
                 onClick = { onDismiss(); onNavigateToSettings() }
@@ -208,7 +218,7 @@ private fun SidebarMenuItem(
         Icon(
             imageVector = icon,
             contentDescription = title,
-            tint = Color.White,
+            tint = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.size(26.dp) // 微调图标尺寸
         )
         Spacer(modifier = Modifier.width(20.dp))

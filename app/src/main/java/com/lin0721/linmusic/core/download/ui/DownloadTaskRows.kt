@@ -96,11 +96,11 @@ internal fun TaskRow(task: DownloadTask, queuePosition: Int?, actions: TaskActio
                     )
                     if (task.status == DownloadTaskStatus.PAUSED) {
                         IconButton(onClick = { actions.onResume(listOf(task)) }) {
-                            Icon(Icons.Rounded.PlayArrow, contentDescription = "继续下载", tint = Color.White, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Rounded.PlayArrow, contentDescription = "继续下载", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
                         }
                     } else {
                         IconButton(onClick = { actions.onPause(listOf(task)) }) {
-                            Icon(Icons.Rounded.Pause, contentDescription = "暂停下载", tint = Color.White, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Rounded.Pause, contentDescription = "暂停下载", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
                         }
                     }
                     IconButton(onClick = { actions.onCancel(listOf(task)) }, modifier = Modifier.size(36.dp)) {

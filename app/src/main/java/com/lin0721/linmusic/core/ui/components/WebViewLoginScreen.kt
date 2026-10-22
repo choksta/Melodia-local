@@ -114,7 +114,7 @@ fun WebViewLoginScreen(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "关闭",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
