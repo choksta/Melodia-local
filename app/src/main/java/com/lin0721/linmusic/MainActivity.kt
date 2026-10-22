@@ -102,7 +102,7 @@ class MainActivity : ComponentActivity() {
 
             // 主题模式：system 跟随系统，light/dark 为手动锁定
             val themeMode by settingsPreferences.themeMode
-                .collectAsState(initial = SettingsPreferences.THEME_MODE_SYSTEM)
+                .collectAsState(initial = SettingsPreferences.THEME_MODE_DARK)
             val isDark = when (themeMode) {
                 SettingsPreferences.THEME_MODE_LIGHT -> false
                 SettingsPreferences.THEME_MODE_DARK -> true

@@ -495,16 +495,16 @@ class SettingsPreferences(
         }
     }
 
-    // 界面明暗主题 Flow，取值 system / light / dark
+    // 界面明暗主题 Flow，取值 system / light / dark；未设置过时默认深色（App 原本就是深色设计）
     val themeMode: Flow<String> = dataStore.data.map { prefs ->
-        prefs[KEY_THEME_MODE] ?: THEME_MODE_SYSTEM
+        prefs[KEY_THEME_MODE] ?: THEME_MODE_DARK
     }
 
     suspend fun saveThemeMode(mode: String) {
         dataStore.edit { prefs ->
             prefs[KEY_THEME_MODE] = when (mode) {
-                THEME_MODE_LIGHT, THEME_MODE_DARK -> mode
-                else -> THEME_MODE_SYSTEM
+                THEME_MODE_SYSTEM, THEME_MODE_LIGHT, THEME_MODE_DARK -> mode
+                else -> THEME_MODE_DARK
             }
         }
     }

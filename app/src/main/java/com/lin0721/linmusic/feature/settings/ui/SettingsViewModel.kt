@@ -132,7 +132,7 @@ class SettingsViewModel(
 
     val uiScalePercent = settingsPreferences.uiScalePercent.asState(UiScale.DEFAULT_PERCENT)
 
-    val themeMode = settingsPreferences.themeMode.asState(SettingsPreferences.THEME_MODE_SYSTEM)
+    val themeMode = settingsPreferences.themeMode.asState(SettingsPreferences.THEME_MODE_DARK)
 
     val uiAnimationsEnabled = settingsPreferences.uiAnimationsEnabled.asState(true)
 
