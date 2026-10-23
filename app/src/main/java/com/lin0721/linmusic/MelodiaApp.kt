@@ -79,13 +79,11 @@ import com.lin0721.linmusic.feature.recognition.ui.RecognitionScreen
 import com.lin0721.linmusic.core.ui.theme.MelodiaPress
 import com.lin0721.linmusic.core.ui.theme.InfoCardRadius
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
-import com.lin0721.linmusic.core.update.UpdateChecker
 import com.lin0721.linmusic.feature.library.ui.LibraryViewModel
 import com.lin0721.linmusic.core.preferences.BottomBarItem
 import com.lin0721.linmusic.core.preferences.BottomBarLayout
 import com.lin0721.linmusic.core.preferences.SettingsPreferences
 import com.lin0721.linmusic.feature.home.ui.HomeViewModel
-import com.lin0721.linmusic.feature.settings.ui.UpdateDialog
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 import kotlinx.coroutines.flow.first
@@ -785,21 +783,7 @@ fun MelodiaApp() {
         // 5. 全局自定义 Toast 提示
         MelodiaToastHost(toastMessage = toastMessage)
 
-        // 6. 全局更新弹窗，由更新横幅或设置页手动检查打开
-        val updateChecker: UpdateChecker = koinInject()
-        val availableUpdate by updateChecker.availableUpdate.collectAsStateWithLifecycle()
-        val isUpdateDialogVisible by updateChecker.isDialogVisible.collectAsStateWithLifecycle()
-        val shownUpdate = availableUpdate
-        if (isUpdateDialogVisible && shownUpdate != null) {
-            UpdateDialog(
-                info = shownUpdate,
-                onDismiss = { updateChecker.dismiss() },
-                onHide = { updateChecker.hideDialog() },
-                onIgnore = { updateChecker.ignoreCurrentVersion() }
-            )
-        }
-
-        // 7. mini 栏爱心按钮触发的"收藏到歌单"弹层，跟全屏播放页共用同一个组件
+        // 6. mini 栏爱心按钮触发的"收藏到歌单"弹层，跟全屏播放页共用同一个组件
         miniCollectSongId?.let { songId ->
             PlaylistCollectSheet(
                 songId = songId,

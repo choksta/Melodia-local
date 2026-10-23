@@ -17,8 +17,6 @@ import com.lin0721.linmusic.core.log.CrashHandler
 import com.lin0721.linmusic.core.log.init
 import com.lin0721.linmusic.core.player.PlaybackController
 import com.lin0721.linmusic.core.preferences.SettingsPreferences
-import com.lin0721.linmusic.core.ui.components.ToastManager
-import com.lin0721.linmusic.core.update.UpdateChecker
 import com.lin0721.linmusic.core.vehicle.LeapmotorMediaClaim
 import com.lin0721.linmusic.core.vehicle.LeapmotorSteeringControl
 import com.lin0721.linmusic.di.downloadModule
@@ -31,12 +29,10 @@ import com.lin0721.linmusic.di.recognitionModule
 import com.lin0721.linmusic.di.repositoryModule
 import com.lin0721.linmusic.di.sourceModule
 import com.lin0721.linmusic.core.source.LxPluginManager
-import com.lin0721.linmusic.di.updateModule
 import com.lin0721.linmusic.di.viewModelModule
 import com.lin0721.linmusic.feature.source.plugin.LxPluginEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okio.Path.Companion.toOkioPath
 import org.koin.android.ext.koin.androidContext
@@ -47,7 +43,6 @@ import org.koin.core.logger.Level
 
 class MelodiaApplication : Application() {
 
-    private val updateChecker: UpdateChecker by inject()
     private val downloadWorkerFactory: DownloadWorkerFactory by inject()
     private val playbackController = inject<PlaybackController>()
     private val settingsPreferences: SettingsPreferences by inject()
@@ -85,7 +80,7 @@ class MelodiaApplication : Application() {
             androidContext(this@MelodiaApplication)
             modules(
                 networkModule, localModule, repositoryModule, sourceModule, lxPluginModule, viewModelModule, playerModule,
-                updateModule(BuildConfig.VERSION_CODE), downloadModule, localMusicModule, recognitionModule
+                downloadModule, localMusicModule, recognitionModule
             )
         }
 
@@ -108,12 +103,6 @@ class MelodiaApplication : Application() {
         mediaClaim.start()
         LeapmotorSteeringControl(this, playbackController, onKeyReceived = mediaClaim::publishNow).register()
 
-        // 延迟几秒后台检查更新，避开启动关键路径；进程生命周期内只检查这一次
-        CoroutineScope(Dispatchers.IO).launch {
-            launch { updateChecker.messages.collect(ToastManager::showToast) }
-            delay(3000)
-            updateChecker.checkForUpdate(manual = false)
-        }
         // 旧版内置下载遗留的更新通知渠道
         getSystemService(NotificationManager::class.java)?.deleteNotificationChannel(LEGACY_UPDATE_CHANNEL_ID)
     }

@@ -42,7 +42,6 @@ import com.lin0721.linmusic.core.ui.theme.uiExit
 import com.lin0721.linmusic.core.ui.theme.uiTween
 import com.lin0721.linmusic.feature.create.ui.CreatePopupMenu
 import com.lin0721.linmusic.feature.player.ui.FullPlayerScreen
-import com.lin0721.linmusic.feature.settings.ui.UpdateBanner
 import dev.chrisbanes.haze.HazeState
 import com.lin0721.linmusic.core.preferences.BottomBarItemSetting
 import com.lin0721.linmusic.core.preferences.BottomBarLayout
@@ -173,7 +172,7 @@ fun MelodiaBottomOverlay(
                 }
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // 更新横幅与下载进度横幅
+                // 下载进度横幅
                 AnimatedVisibility(
                     visible = !isLoginScreenVisible,
                     enter = uiEnter(expandVertically() + fadeIn()),
@@ -181,7 +180,6 @@ fun MelodiaBottomOverlay(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        UpdateBanner(modifier = Modifier.fillMaxWidth())
                         DownloadProgressBanner(modifier = Modifier.fillMaxWidth())
                     }
                 }
