@@ -4,8 +4,8 @@
 参考Spotify UI构建的现代化、轻量级第三方网易云音乐客户端。
 
 
-[![GitHub Release](https://img.shields.io/github/v/release/rinchao0721/Melodia?style=flat-square&color=blue)](https://github.com/rinchao0721/Melodia/releases)
-[![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B%20%7C%20Windows-green?style=flat-square)](https://github.com/rinchao0721/Melodia/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/choksta/Melodia-local?style=flat-square&color=blue)](https://github.com/choksta/Melodia-local/releases)
+[![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B-green?style=flat-square)](https://github.com/choksta/Melodia-local/releases)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.x-purple?style=flat-square)](https://kotlinlang.org)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 </div>
