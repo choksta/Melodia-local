@@ -19,6 +19,22 @@
 >
 > 相对上游的改动说明见 [Releases](https://github.com/choksta/Melodia-local/releases)。
 
+## 与上游的差异
+
+本项目代码主体来自上游，仓库同步于上游 `v2.1.0-beta.1`（`732c1b23`）及其后续修正。下面这些是本仓库自己的改动：
+
+| 改动 | 说明 |
+|---|---|
+| **独立包名** | `com.choksta.melodia`，可与官方版并存安装、互不覆盖 |
+| **改为检查本仓库更新** | 更新源指向本仓库 Releases，支持应用内下载安装；桌面端沿用上游实现 |
+| **下载镜像加速** | APK 下载优先走国内镜像（ghfast.top / gh-proxy.org），失败回落官方直连，支持断点续传 |
+| **移除关于页** | 上游的「关于」页面已删除，版本号仅在系统应用信息中可见 |
+| **侧栏明暗切换** | 侧栏「设置和隐私」上方新增一键切换主题 |
+| **起播优化** | 播放服务不再在起播路径上阻塞读 DataStore 配置 |
+| **搜索框配色修复** | 修正发现态搜索框取色反用导致的「浅色纯黑 / 深色纯白」问题 |
+
+其余功能、架构设计、使用说明与构建文档均来自上游项目，本仓库未作改动。
+
 ## 截图预览
 
 ### 手机
@@ -59,10 +75,12 @@
 
 ## 下载与反馈
 
-- **安装包下载**：前往 [GitHub Releases](https://github.com/rinchao0721/Melodia/releases) 获取最新预编译 APK
-- **蓝奏云**：https://wware.lanzn.com/b01gic8ioj 密码:cem2
-- **缺陷与建议**：[GitHub Issues](https://github.com/rinchao0721/Melodia/issues)
-- **交流 QQ 群也可以下载**：`331832966`
+本仓库只发布 **Android APK**，不提供 Windows 桌面端安装包（桌面端需按下方「构建与开发」自行编译）。
+
+- **安装包下载**：前往 [Releases](https://github.com/choksta/Melodia-local/releases) 获取最新 APK
+- **应用内更新**：设置 → 关于与更新 → 检查更新，可自动发现新版本并在应用内下载安装
+- **缺陷与建议**：[Issues](https://github.com/choksta/Melodia-local/issues)
+- **安装说明**：包名为 `com.choksta.melodia`，与官方版可并存安装；覆盖安装不会清除数据
 
 ---
 ## 项目架构
