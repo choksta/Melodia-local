@@ -31,7 +31,7 @@ class UpdateRepository(
                         versionName = dto.tagName,
                         versionCode = versionCode,
                         isPrerelease = dto.prerelease,
-                        changelog = dto.body.orEmpty(),
+                        changelog = stripMarkers(dto.body),
                         releasePageUrl = dto.htmlUrl.ifBlank { releasesUrl + "/tag/" + dto.tagName },
                         apkUrl = apkAsset?.browserDownloadUrl?.ifBlank { null },
                         apkSizeBytes = apkAsset?.size ?: 0L,
@@ -70,6 +70,12 @@ class UpdateRepository(
         return VersionCodeResolver.resolve(dto.tagName)
     }
 
+    // 去掉正文里的 HTML 注释：发布脚本用它写 versionCode 标记，不该显示给用户
+    private fun stripMarkers(body: String?): String {
+        if (body.isNullOrBlank()) return ""
+        return body.replace(HTML_COMMENT_REGEX, "").trim()
+    }
+
     // 匹配 versionCode=20512 / versionCode: 20512 / -20512.apk 这几种写法
     private fun extractVersionCodeMarker(text: String?): Int? {
         if (text.isNullOrBlank()) return null
@@ -94,5 +100,8 @@ class UpdateRepository(
 
         // 资源名里的 -20512.apk
         private val APK_NAME_REGEX = Regex("""-(\d{4,9})\.apk""", RegexOption.IGNORE_CASE)
+
+        // HTML 注释块，跨行
+        private val HTML_COMMENT_REGEX = Regex("""<!--.*?-->""", RegexOption.DOT_MATCHES_ALL)
     }
 }
