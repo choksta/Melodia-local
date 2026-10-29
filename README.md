@@ -12,6 +12,13 @@
 
 ---
 
+> **本仓库为非官方修改版**
+>
+> 本项目基于 [rinchao0721/Melodia](https://github.com/rinchao0721/Melodia)（MIT License）修改而来，
+> 与原作者无关，不代表其立场，也**不是官方发布渠道**。原项目的版权与署名归原作者所有，详见 [LICENSE](LICENSE)。
+>
+> 相对上游的改动说明见 [Releases](https://github.com/choksta/Melodia-local/releases)。
+
 ## 截图预览
 
 ### 手机
