@@ -178,12 +178,15 @@ private fun SearchField(
 ) {
     val colorSpec = uiTween<Color>(BAR_ANIM_DURATION, easing = FastOutSlowInEasing)
     val containerColor by animateColorAsState(
-        targetValue = if (isDiscovery) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surface,
+        // 发现态与输入态统一用 surface：跟随主题的中性色。
+        // 原写法发现态取 onSurface（surface 上的文字色）当容器背景，提示文字又反过来取 background，
+        // 形成「永远反色」的搜索框——浅色下纯黑、深色下纯白，与页面割裂。
+        targetValue = MaterialTheme.colorScheme.surface,
         animationSpec = colorSpec,
         label = "search_field_container"
     )
     val hintColor by animateColorAsState(
-        targetValue = if (isDiscovery) MaterialTheme.colorScheme.background.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurfaceVariant,
+        targetValue = MaterialTheme.colorScheme.onSurfaceVariant,
         animationSpec = colorSpec,
         label = "search_field_hint"
     )
