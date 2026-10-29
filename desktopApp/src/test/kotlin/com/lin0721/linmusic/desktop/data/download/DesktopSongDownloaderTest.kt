@@ -36,7 +36,10 @@ class DesktopSongDownloaderTest {
     private lateinit var root: File
     private lateinit var server: HttpServer
     private val requests = CopyOnWriteArrayList<String>()
-    private var trial = false
+
+    // 由 HTTP server 线程读取、测试线程写入，必须 volatile 否则可能读到旧值，
+    // 导致 failedTaskKeepsReasonAndCanBeRetried 偶发拿到"试听"响应（Linux CI 上曾失败）
+    @Volatile private var trial = false
 
     @Volatile private var slow = false
     private var buildDownloader: () -> DesktopSongDownloader = { error("未初始化") }
