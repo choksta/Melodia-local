@@ -25,10 +25,16 @@ class UpdateChecker(
     private val updateRepository: UpdateRepository,
     private val settingsPreferences: SettingsPreferences,
     private val currentVersionCode: Int?,
+    // 本地 fork 只发测试性质的包，没有"稳定通道"可言，忽略预发布过滤才有意义
+    private val alwaysAllowPrerelease: Boolean = false,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 ) {
     private val _availableUpdate = MutableStateFlow<UpdateInfo?>(null)
     val availableUpdate: StateFlow<UpdateInfo?> = _availableUpdate.asStateFlow()
+
+    // 手动检查时给按钮用，避免连点与无反馈
+    private val _isChecking = MutableStateFlow(false)
+    val isChecking: StateFlow<Boolean> = _isChecking.asStateFlow()
 
     private val _isDialogVisible = MutableStateFlow(false)
     val isDialogVisible: StateFlow<Boolean> = _isDialogVisible.asStateFlow()
@@ -57,25 +63,30 @@ class UpdateChecker(
             }
             if (!manual && !settingsPreferences.autoCheckUpdateEnabled.first()) return@launch
 
-            val allowPrerelease = settingsPreferences.allowPrereleaseChannel.first()
-            updateRepository.fetchLatestUpdate(versionCode, allowPrerelease)
-                .onSuccess { info ->
-                    if (info == null) {
-                        _availableUpdate.value = null
-                        _isBannerVisible.value = false
-                        if (manual) _messages.tryEmit("当前已是最新版本")
-                        return@onSuccess
+            _isChecking.value = true
+            try {
+                val allowPrerelease = alwaysAllowPrerelease || settingsPreferences.allowPrereleaseChannel.first()
+                updateRepository.fetchLatestUpdate(versionCode, allowPrerelease)
+                    .onSuccess { info ->
+                        if (info == null) {
+                            _availableUpdate.value = null
+                            _isBannerVisible.value = false
+                            if (manual) _messages.tryEmit("当前已是最新版本")
+                            return@onSuccess
+                        }
+                        val ignoredTag = settingsPreferences.ignoredUpdateTag.first()
+                        if (!manual && info.versionName == ignoredTag) return@onSuccess
+                        _availableUpdate.value = info
+                        _isBannerVisible.value = true
+                        if (manual || showDialogOnAutoFound) _isDialogVisible.value = true
                     }
-                    val ignoredTag = settingsPreferences.ignoredUpdateTag.first()
-                    if (!manual && info.versionName == ignoredTag) return@onSuccess
-                    _availableUpdate.value = info
-                    _isBannerVisible.value = true
-                    if (manual || showDialogOnAutoFound) _isDialogVisible.value = true
-                }
-                .onFailure { e ->
-                    AppLogger.e(TAG, "检查更新失败", e)
-                    if (manual) _messages.tryEmit("检查更新失败，请稍后重试")
-                }
+                    .onFailure { e ->
+                        AppLogger.e(TAG, "检查更新失败", e)
+                        if (manual) _messages.tryEmit("检查更新失败，请稍后重试")
+                    }
+            } finally {
+                _isChecking.value = false
+            }
         }
     }
 

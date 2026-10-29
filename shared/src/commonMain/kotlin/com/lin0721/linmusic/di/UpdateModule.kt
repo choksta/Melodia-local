@@ -22,8 +22,17 @@ private const val GITHUB_CLIENT = "github"
  * 软件更新检查（GitHub Releases）依赖注入模块
  *
  * GitHub API 与网易业务网络隔离，不经过加密拦截器；currentVersionCode 为 null 表示开发构建
+ *
+ * [owner] / [repo] 传自定义仓库时（本地 fork 场景），会同时放开预发布过滤：
+ * 本地打出来的包一律以 prerelease 发布，不放开就永远查不到更新。
  */
-fun updateModule(currentVersionCode: Int?): Module = module {
+fun updateModule(
+    currentVersionCode: Int?,
+    owner: String? = null,
+    repo: String? = null
+): Module = module {
+
+    val isCustomRepo = !owner.isNullOrBlank() && !repo.isNullOrBlank()
 
     single(named(GITHUB_CLIENT)) {
         OkHttpClient.Builder()
@@ -49,6 +58,15 @@ fun updateModule(currentVersionCode: Int?): Module = module {
 
     single<GithubReleaseApi> { get<Retrofit>(named(GITHUB_CLIENT)).create(GithubReleaseApi::class.java) }
 
-    single { UpdateRepository(get()) }
-    single { UpdateChecker(updateRepository = get(), settingsPreferences = get(), currentVersionCode = currentVersionCode) }
+    single {
+        if (isCustomRepo) UpdateRepository(get(), owner!!, repo!!) else UpdateRepository(get())
+    }
+    single {
+        UpdateChecker(
+            updateRepository = get(),
+            settingsPreferences = get(),
+            currentVersionCode = currentVersionCode,
+            alwaysAllowPrerelease = isCustomRepo
+        )
+    }
 }

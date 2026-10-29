@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.media3.common.MediaItem
 import com.lin0721.linmusic.core.download.ui.DownloadProgressBanner
+import com.lin0721.linmusic.feature.settings.ui.UpdateBanner
 import com.lin0721.linmusic.core.player.QueueItem
 import com.lin0721.linmusic.core.ui.components.CustomToast
 import com.lin0721.linmusic.core.ui.components.MelodiaNavigationBar
@@ -172,7 +173,7 @@ fun MelodiaBottomOverlay(
                 }
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // 下载进度横幅
+                // 更新横幅与下载进度横幅
                 AnimatedVisibility(
                     visible = !isLoginScreenVisible,
                     enter = uiEnter(expandVertically() + fadeIn()),
@@ -180,6 +181,7 @@ fun MelodiaBottomOverlay(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
+                        UpdateBanner(modifier = Modifier.fillMaxWidth())
                         DownloadProgressBanner(modifier = Modifier.fillMaxWidth())
                     }
                 }

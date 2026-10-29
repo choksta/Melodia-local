@@ -18,5 +18,7 @@ data class GithubReleaseDto(
 @Serializable
 data class GithubReleaseAssetDto(
     val name: String = "",
-    @SerialName("browser_download_url") val browserDownloadUrl: String = ""
+    @SerialName("browser_download_url") val browserDownloadUrl: String = "",
+    // 字节数，用于展示下载体积与做进度百分比兜底
+    val size: Long = 0L
 )

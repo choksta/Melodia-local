@@ -28,11 +28,14 @@ import com.lin0721.linmusic.di.playerModule
 import com.lin0721.linmusic.di.recognitionModule
 import com.lin0721.linmusic.di.repositoryModule
 import com.lin0721.linmusic.di.sourceModule
+import com.lin0721.linmusic.di.updateModule
+import com.lin0721.linmusic.core.update.UpdateChecker
 import com.lin0721.linmusic.core.source.LxPluginManager
 import com.lin0721.linmusic.di.viewModelModule
 import com.lin0721.linmusic.feature.source.plugin.LxPluginEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okio.Path.Companion.toOkioPath
 import org.koin.android.ext.koin.androidContext
@@ -47,6 +50,7 @@ class MelodiaApplication : Application() {
     private val playbackController = inject<PlaybackController>()
     private val settingsPreferences: SettingsPreferences by inject()
     private val lxPluginEngine: LxPluginEngine by inject()
+    private val updateChecker: UpdateChecker by inject()
 
     override fun onCreate() {
         super.onCreate()
@@ -80,7 +84,13 @@ class MelodiaApplication : Application() {
             androidContext(this@MelodiaApplication)
             modules(
                 networkModule, localModule, repositoryModule, sourceModule, lxPluginModule, viewModelModule, playerModule,
-                downloadModule, localMusicModule, recognitionModule
+                downloadModule, localMusicModule, recognitionModule,
+                // 更新源指向自己的 fork：装的是本地构建出来的包，查上游也装不上
+                updateModule(
+                    currentVersionCode = BuildConfig.VERSION_CODE,
+                    owner = UPDATE_OWNER,
+                    repo = UPDATE_REPO
+                )
             )
         }
 
@@ -88,6 +98,13 @@ class MelodiaApplication : Application() {
         val lxPluginManager: LxPluginManager by inject()
         CoroutineScope(Dispatchers.IO).launch {
             lxPluginManager.warmUp()
+        }
+
+        // 启动后自动检查更新：延后几秒让首帧先出来，不跟冷启动抢线程与网络
+        CoroutineScope(Dispatchers.IO).launch {
+            delay(AUTO_CHECK_DELAY_MS)
+            runCatching { updateChecker.checkForUpdate(manual = false) }
+                .onFailure { AppLogger.e("MelodiaApplication", "自动检查更新失败", it) }
         }
 
         // 初始化 WorkManager 并注入自定义 WorkerFactory
@@ -118,5 +135,12 @@ class MelodiaApplication : Application() {
 
     private companion object {
         const val LEGACY_UPDATE_CHANNEL_ID = "app_update"
+
+        // 更新检查的 GitHub 仓库：自己的 fork，发布包都在这里
+        const val UPDATE_OWNER = "choksta"
+        const val UPDATE_REPO = "Melodia-local"
+
+        // 冷启动让位时间，避免自动检查跟首帧抢资源
+        const val AUTO_CHECK_DELAY_MS = 4_000L
     }
 }

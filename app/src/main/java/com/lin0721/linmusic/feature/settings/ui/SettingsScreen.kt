@@ -199,6 +199,33 @@ private fun MainSettingsMenu(
             }
         }
 
+        // 关于与更新：手动检查 + 启动自动检查
+        item {
+            val isChecking by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
+            val available by viewModel.availableUpdate.collectAsStateWithLifecycle()
+            val autoCheck by viewModel.autoCheckUpdateEnabled.collectAsStateWithLifecycle()
+
+            SettingsGroupCard(title = "关于与更新") {
+                SettingsRow(
+                    title = "检查更新",
+                    subtitle = when {
+                        isChecking -> "正在检查…"
+                        available != null -> "发现新版本 ${available!!.versionName}，点击查看"
+                        else -> "当前版本 ${viewModel.appVersionName}（${viewModel.appVersionCode}）"
+                    },
+                    onClick = {
+                        if (available != null) viewModel.openUpdateDialog() else viewModel.checkForUpdate()
+                    }
+                )
+                SettingsSwitchRow(
+                    title = "启动时自动检查",
+                    subtitle = "打开应用后静默查询 GitHub 发布页，发现新版本时在底部提示",
+                    checked = autoCheck,
+                    onCheckedChange = { viewModel.updateAutoCheckUpdateEnabled(it) }
+                )
+            }
+        }
+
         // 底部账户操作按钮组
         item {
             Column(

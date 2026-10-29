@@ -33,6 +33,7 @@ import com.lin0721.linmusic.core.source.LxPluginItem
 import com.lin0721.linmusic.core.source.MusicPlatform
 import com.lin0721.linmusic.core.source.SourcePreferences
 import com.lin0721.linmusic.core.source.LxPluginManager
+import com.lin0721.linmusic.core.update.UpdateChecker
 import java.io.File
 
 private const val TAG = "SettingsViewModel"
@@ -45,7 +46,8 @@ class SettingsViewModel(
     private val lxPluginManager: LxPluginManager,
     private val userPreferences: UserPreferences,
     private val authRepository: AuthRepository,
-    private val resourceProvider: ResourceProvider
+    private val resourceProvider: ResourceProvider,
+    private val updateChecker: UpdateChecker
 ) : ViewModel() {
 
     // DataStore 的偏好流统一以相同策略转为 StateFlow，避免每项重复五行样板
@@ -166,6 +168,23 @@ class SettingsViewModel(
     val fluidCloudLyricEnabled = settingsPreferences.fluidCloudLyricEnabled.asState(false)
 
     val logLevel = settingsPreferences.logLevel.asState(if (BuildConfig.DEBUG) "DEBUG" else "WARN")
+
+    // ─── 更新检查 ───
+    val autoCheckUpdateEnabled = settingsPreferences.autoCheckUpdateEnabled.asState(true)
+
+    val isCheckingUpdate: StateFlow<Boolean> = updateChecker.isChecking
+
+    val availableUpdate: StateFlow<com.lin0721.linmusic.core.update.domain.UpdateInfo?> =
+        updateChecker.availableUpdate
+
+    // 设置页展示用的当前安装版本
+    val appVersionName: String = BuildConfig.VERSION_NAME
+    val appVersionCode: Int = BuildConfig.VERSION_CODE
+
+    fun checkForUpdate() = updateChecker.checkForUpdate(manual = true)
+
+    // 已经检查到新版本时，点入口直接看详情，不必再查一遍
+    fun openUpdateDialog() = updateChecker.showDialog()
 
     // ─── 服务端拉取数据状态 ───
     private val _userLevel = MutableStateFlow<UserLevelData?>(null)
@@ -421,6 +440,8 @@ class SettingsViewModel(
     fun updateLyriconEnabled(enabled: Boolean) = launchSave { settingsPreferences.saveLyriconEnabled(enabled) }
 
     fun updateFluidCloudLyricEnabled(enabled: Boolean) = launchSave { settingsPreferences.saveFluidCloudLyricEnabled(enabled) }
+
+    fun updateAutoCheckUpdateEnabled(enabled: Boolean) = launchSave { settingsPreferences.saveAutoCheckUpdateEnabled(enabled) }
 
     fun onNicknameInputChanged(name: String) {
         _nicknameInput.value = name
