@@ -46,7 +46,9 @@ fun ProfileSidebar(
     onNavigateToCloud: () -> Unit,
     onNavigateToDownloads: () -> Unit,
     onNavigateToMessage: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    isDarkTheme: Boolean,
+    onToggleTheme: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -134,6 +136,12 @@ fun ProfileSidebar(
                 icon = Icons.Outlined.Notifications,
                 title = "消息",
                 onClick = { onDismiss(); onNavigateToMessage() }
+            )
+            SidebarMenuItem(
+                // 展示的是「切过去之后」的目标形态：当前深色显示太阳→浅色，反之显示月亮→深色
+                icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+                title = if (isDarkTheme) "切换到浅色模式" else "切换到深色模式",
+                onClick = { onDismiss(); onToggleTheme() }
             )
             SidebarMenuItem(
                 icon = Icons.Outlined.Settings,
