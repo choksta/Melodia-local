@@ -94,6 +94,10 @@ class UpdateRepository(
         private const val GITHUB_OWNER = "rinchao0721"
         private const val GITHUB_REPO = "Melodia"
 
+        // 默认仓库（上游官方）的发布页地址；实例内部会用构造时的 owner/repo 拼自己的
+        val RELEASES_URL = "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases"
+        val REPOSITORY_URL = "https://github.com/$GITHUB_OWNER/$GITHUB_REPO"
+
         // 大小写不敏感，允许 = 或 : 分隔，数字至少 4 位（本地编号已到 20512）
         private val MARKER_REGEX =
             Regex("""versionCode\s*[:=]\s*(\d{4,9})""", RegexOption.IGNORE_CASE)
