@@ -38,7 +38,10 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.lin0721.linmusic"
+        // 本地 fork 独立包名：与官方版并存安装、互不覆盖，也不再顶着原作者 ID
+        // 刻意只改 applicationId 而不动 namespace：源码包名保持 com.lin0721.linmusic，
+        // 这样每次同步主线只需 cherry-pick 定制提交，不会因目录整体迁移产生全量冲突
+        applicationId = "com.choksta.melodia"
         minSdk = 26
         targetSdk = 36
         // CI 打 tag 发布时通过 -PreleaseVersionCode/-PreleaseVersionName 覆盖，本地构建保持默认值
