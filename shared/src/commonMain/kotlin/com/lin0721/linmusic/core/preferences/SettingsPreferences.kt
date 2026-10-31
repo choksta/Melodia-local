@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.lin0721.linmusic.core.log.AppLogger
+import com.lin0721.linmusic.core.player.AudioEffectSettings
 import com.lin0721.linmusic.core.player.CrossfadePolicy
 import com.lin0721.linmusic.core.player.floatinglyric.FloatingLyricAlign
 import com.lin0721.linmusic.core.player.floatinglyric.FloatingLyricPalette
@@ -65,6 +66,14 @@ class SettingsPreferences(
         private val KEY_CROSSFADE_ENABLED = booleanPreferencesKey("crossfade_enabled")
         // 自动切歌交叉淡化时长 (ms)，默认 3000
         private val KEY_CROSSFADE_DURATION_MS = intPreferencesKey("crossfade_duration_ms")
+        // 音效调节（均衡器 + 低音增强），默认关闭
+        private val KEY_AUDIO_EFFECT_ENABLED = booleanPreferencesKey("audio_effect_enabled")
+        // 音效预设序号，-1 表示自定义
+        private val KEY_AUDIO_EFFECT_PRESET = intPreferencesKey("audio_effect_preset")
+        // 自定义频段增益（毫贝，逗号分隔，顺序对应 AudioEffectSettings.REFERENCE_FREQS_HZ）
+        private val KEY_AUDIO_EFFECT_BANDS = stringPreferencesKey("audio_effect_bands")
+        // 低音增强强度 0~1000
+        private val KEY_BASS_BOOST_STRENGTH = intPreferencesKey("bass_boost_strength")
         // 默认播放顺序，默认 "loop" (列表循环)
         // 仅 Wi-Fi 网络下联网播放，默认 false
         private val KEY_WIFI_ONLY_PLAY = booleanPreferencesKey("wifi_only_play")
@@ -316,6 +325,45 @@ class SettingsPreferences(
         dataStore.edit { prefs ->
             prefs[KEY_AUDIO_OFFLOAD] = enabled
             if (enabled) prefs[KEY_CROSSFADE_ENABLED] = false
+        }
+    }
+
+    // 音效调节开关；音频卸载会绕过 AudioEffect，两者不能同时生效
+    val audioEffectEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_AUDIO_EFFECT_ENABLED] ?: false
+    }
+
+    val audioEffectPreset: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[KEY_AUDIO_EFFECT_PRESET] ?: AudioEffectSettings.DEFAULT_PRESET
+    }
+
+    val audioEffectBands: Flow<List<Int>> = dataStore.data.map { prefs ->
+        AudioEffectSettings.parseBands(prefs[KEY_AUDIO_EFFECT_BANDS])
+    }
+
+    val bassBoostStrength: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[KEY_BASS_BOOST_STRENGTH] ?: 0
+    }
+
+    suspend fun saveAudioEffectEnabled(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[KEY_AUDIO_EFFECT_ENABLED] = enabled
+            // 卸载通道不支持软件音效，开启音效时自动关掉，避免开关打开但没有效果
+            if (enabled) prefs[KEY_AUDIO_OFFLOAD] = false
+        }
+    }
+
+    // 预设与频段一起写入：切换预设时频段要保持一致，否则从预设回到自定义会拿到旧曲线
+    suspend fun saveAudioEffectPreset(preset: Int, bands: List<Int>) {
+        dataStore.edit { prefs ->
+            prefs[KEY_AUDIO_EFFECT_PRESET] = preset
+            prefs[KEY_AUDIO_EFFECT_BANDS] = AudioEffectSettings.formatBands(bands)
+        }
+    }
+
+    suspend fun saveBassBoostStrength(strength: Int) {
+        dataStore.edit { prefs ->
+            prefs[KEY_BASS_BOOST_STRENGTH] = strength
         }
     }
 

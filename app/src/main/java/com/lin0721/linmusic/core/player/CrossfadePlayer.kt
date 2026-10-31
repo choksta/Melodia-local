@@ -20,6 +20,11 @@ import com.lin0721.linmusic.core.log.AppLogger
 
 private const val TAG = "CrossfadePlayer"
 private const val FADE_STEP_MS = 16L
+// 启动淡入：冷启动/暂停恢复时 AudioTrack 重新起动、在途效果链的滤波器从零状态启动，
+// 两者都会让第一帧出现过冲——听感是「开头一下特别大声」或「啪」。90ms 的音量斜坡足够抹平。
+private const val STARTUP_FADE_MS = 90L
+// 等不到真正出声（缓冲卡住等）时兜底恢复满音量，避免音量被永久留在 0
+private const val STARTUP_FADE_TIMEOUT_MS = 1600L
 
 // 会话播放器：内部两台 ExoPlayer 轮换，对外始终是同一个 Player。
 // 带 crossfadeMs 的切歌先在空闲播放器里静音缓冲，就绪后才接管并等功率交叉淡化；
@@ -44,6 +49,17 @@ class CrossfadePlayer(
     private var outgoingStartGain = 1f
     private var fadeStartElapsedMs = 0L
     private var fadeDurationMs = 0L
+
+    // 启动淡入：pending 表示已把音量预置为 0、正在等真正出声；
+    // runnable 是正在执行的音量斜坡
+    private var startupFadePending = false
+    private var startupFadeRunnable: Runnable? = null
+    private val startupFadeTimeout = Runnable {
+        if (!startupFadePending) return@Runnable
+        startupFadePending = false
+        if (outgoing == null) active.volume = 1f
+        AppLogger.w(TAG, "启动淡入等待超时，恢复满音量")
+    }
 
     private val active: ExoPlayer
         get() = if (player === secondary) secondary else primary
@@ -167,13 +183,19 @@ class CrossfadePlayer(
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
         if (!playWhenReady) {
             completePendingImmediately()
+            cancelStartupFade()
             releaseOutgoing()
+        } else if (outgoing == null && !active.isPlaying) {
+            // 从静止开始播放：先把音量压到 0，等真正出声（isPlaying 变 true）再斜坡升上来。
+            // 缓冲期间本就没有声音，压 0 不影响体验。
+            primeStartupFade()
         }
         return super.handleSetPlayWhenReady(playWhenReady)
     }
 
     override fun handleStop(): ListenableFuture<*> {
         completePendingImmediately()
+        cancelStartupFade()
         releaseOutgoing()
         return super.handleStop()
     }
@@ -200,6 +222,9 @@ class CrossfadePlayer(
         startPositionMs: Long,
         fadeMs: Long
     ): ListenableFuture<*> {
+        // 启动淡入与交叉淡化都在改音量，不能同时进行：先收掉淡入，把当前播放器音量还原
+        cancelStartupFade()
+        active.volume = 1f
         // 上一轮淡出还没结束时先停掉它；正在淡入的当前播放器保持现有音量，成为新一轮的淡出方
         stopOutgoing()
         val incoming = other(active)
@@ -273,6 +298,52 @@ class CrossfadePlayer(
         out.volume = 1f
     }
 
+    // 预置：把音量压到 0 并挂超时兜底，等 isPlaying 变 true 的那一刻再开始升
+    private fun primeStartupFade() {
+        cancelStartupFade()
+        startupFadePending = true
+        active.volume = 0f
+        handler.postDelayed(startupFadeTimeout, STARTUP_FADE_TIMEOUT_MS)
+    }
+
+    // 真正出声的瞬间：90ms 从 0 升到满，把 AudioTrack 起动与效果链滤波器的过冲压进斜坡里
+    private fun runStartupFade() {
+        if (!startupFadePending) return
+        startupFadePending = false
+        handler.removeCallbacks(startupFadeTimeout)
+        startupFadeRunnable?.let { handler.removeCallbacks(it) }
+
+        val target = active
+        val startMs = SystemClock.elapsedRealtime()
+        val runnable = object : Runnable {
+            override fun run() {
+                // 已进入交叉淡化 / 转发目标被换掉：音量交给淡化逻辑或新播放器自己管
+                if (outgoing != null || target !== active) {
+                    if (target !== active) target.volume = 1f
+                    startupFadeRunnable = null
+                    return
+                }
+                val progress = ((SystemClock.elapsedRealtime() - startMs).toFloat() / STARTUP_FADE_MS)
+                    .coerceIn(0f, 1f)
+                target.volume = progress
+                if (progress < 1f) {
+                    handler.postDelayed(this, FADE_STEP_MS)
+                } else {
+                    startupFadeRunnable = null
+                }
+            }
+        }
+        startupFadeRunnable = runnable
+        handler.post(runnable)
+    }
+
+    private fun cancelStartupFade() {
+        startupFadePending = false
+        handler.removeCallbacks(startupFadeTimeout)
+        startupFadeRunnable?.let { handler.removeCallbacks(it) }
+        startupFadeRunnable = null
+    }
+
     private fun other(player: ExoPlayer): ExoPlayer = if (player === primary) secondary else primary
 
     private inner class InternalListener : Player.Listener {
@@ -303,6 +374,15 @@ class CrossfadePlayer(
             if (playWhenReady || active.playWhenReady) return
             completePendingImmediately(playWhenReady = false)
             releaseOutgoing()
+        }
+
+        // 只在「当前播放器真正出声」这一刻启动淡入：缓冲期间 isPlaying 一直是 false，
+        // 用 playWhenReady 当触发点会白做（斜坡早就跑完了才出声）
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (!isPlaying) return
+            val exo = player as? ExoPlayer ?: return
+            if (exo !== active) return
+            runStartupFade()
         }
     }
 }

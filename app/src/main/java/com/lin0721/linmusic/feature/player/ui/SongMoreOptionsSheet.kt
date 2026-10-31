@@ -72,6 +72,8 @@ fun SongMoreOptionsSheet(
     onCollectClick: () -> Unit,
     onShareClick: () -> Unit,
     onDownloadClick: () -> Unit,
+    // 音效属于听感层面的调整，放在播放页手边比藏在设置两级菜单里合适
+    onAudioEffectClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -405,7 +407,20 @@ fun SongMoreOptionsSheet(
                     }
                 )
 
-                // 10. 播放页小歌词开关
+                // 10. 音效调节
+                OptionRow(
+                    icon = Icons.Rounded.Equalizer,
+                    text = "音效调节",
+                    onClick = {
+                        scope.launch {
+                            sheetState.hide()
+                            onDismiss()
+                            onAudioEffectClick()
+                        }
+                    }
+                )
+
+                // 11. 播放页小歌词开关
                 if (!isPodcast) Row(
                     modifier = Modifier
                         .fillMaxWidth()

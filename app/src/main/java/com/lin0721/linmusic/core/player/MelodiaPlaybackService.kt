@@ -109,12 +109,13 @@ class MelodiaPlaybackService : MediaSessionService() {
     private var isFloatingLyricLocked = false
 
     // 数据源工厂在播放线程上被调用，那里不能做阻塞读取（原实现每次起播 runBlocking 两次读 DataStore）。
-    // 这里缓存成字段：服务创建时取一次初值，之后跟随配置变化，播放线程只读字段
+    // 这里缓存成字段：默认值先用着，onCreate 里的 collect 立刻把真实值覆盖上来，播放线程只读字段
     @Volatile private var streamCacheEnabled = true
     @Volatile private var audioCacheMaxSizeBytes = 500L * 1024 * 1024
 
     private var player: Player? = null
     private var crossfadePlayer: CrossfadePlayer? = null
+    private var audioEffectController: AudioEffectController? = null
     private var mediaSession: MediaSession? = null
     private var sessionActivityPendingIntent: PendingIntent? = null
     private var currentCoverBitmap: Bitmap? = null
@@ -233,14 +234,23 @@ class MelodiaPlaybackService : MediaSessionService() {
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .setUsage(C.USAGE_MEDIA)
             .build()
+        // 音效控制器要在播放器之前建好：渲染器工厂要用它给每个音频 sink 造处理器
+        val effectController = AudioEffectController()
+        audioEffectController = effectController
+        // 音效跑在解码后的 PCM 上，不再依赖 audio session，也不需要预分配/固定 session：
+        // session 那套是为了让系统 Equalizer 能在静音期插进音频通路，PCM 均衡器没这个约束
+        val renderersFactory = MelodiaRenderersFactory(this) { effectController.newProcessor() }
+
         // 耳机拔出 / 蓝牙耳机断开（如收回耳机盒）时系统发出 AUDIO_BECOMING_NOISY，需自动暂停，避免外放；
         // 两台都开启：交叉淡化期间淡出方和缓冲中的新歌也要一起停
         val primaryPlayer = ExoPlayer.Builder(this)
             .setMediaSourceFactory(mediaSourceFactory)
+            .setRenderersFactory(renderersFactory)
             .setHandleAudioBecomingNoisy(true)
             .build()
         val secondaryPlayer = ExoPlayer.Builder(this)
             .setMediaSourceFactory(mediaSourceFactory)
+            .setRenderersFactory(renderersFactory)
             .setHandleAudioBecomingNoisy(true)
             .build()
         val sessionPlayer = CrossfadePlayer(
@@ -266,6 +276,20 @@ class MelodiaPlaybackService : MediaSessionService() {
             }.distinctUntilChanged().collect { enabled ->
                 primaryPlayer.setAudioOffloadEnabled(enabled)
                 secondaryPlayer.setAudioOffloadEnabled(enabled)
+                // 卸载通道直达硬件，软件音效插不进去（设置页已保证「开音效就关卸载」）
+            }
+        }
+
+        serviceScope.launch {
+            combine(
+                settingsPreferences.audioEffectEnabled,
+                settingsPreferences.audioEffectPreset,
+                settingsPreferences.audioEffectBands,
+                settingsPreferences.bassBoostStrength
+            ) { effectEnabled, preset, bands, bassStrength ->
+                AudioEffectState(effectEnabled, preset, bands, bassStrength)
+            }.distinctUntilChanged().collect { state ->
+                effectController.update(state.enabled, state.preset, state.bands, state.bassStrength)
             }
         }
 
@@ -419,6 +443,8 @@ class MelodiaPlaybackService : MediaSessionService() {
             release()
             mediaSession = null
         }
+        // 音效控制器本身没有要释放的资源（均衡器随音频 sink 一起销毁），置空即可
+        audioEffectController = null
         crossfadePlayer?.release()
         crossfadePlayer = null
         player = null
@@ -736,6 +762,14 @@ private fun ExoPlayer.setAudioOffloadEnabled(enabled: Boolean) {
         .setAudioOffloadPreferences(AudioOffloadPreferences.Builder().setAudioOffloadMode(mode).build())
         .build()
 }
+
+// 音效设置四元组：combine 后先做结构比较再下发，避免无关的设置变更反复重写频段
+private data class AudioEffectState(
+    val enabled: Boolean,
+    val preset: Int,
+    val bands: List<Int>,
+    val bassStrength: Int
+)
 
 
 

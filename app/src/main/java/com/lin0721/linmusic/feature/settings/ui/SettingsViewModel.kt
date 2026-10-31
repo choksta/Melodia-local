@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lin0721.linmusic.BuildConfig
+import com.lin0721.linmusic.core.player.AudioEffectSettings
 import com.lin0721.linmusic.core.player.CrossfadePolicy
 import com.lin0721.linmusic.core.player.floatinglyric.FloatingLyricStyle
 import com.lin0721.linmusic.core.preferences.BottomBarItemSetting
@@ -108,6 +109,14 @@ class SettingsViewModel(
     val crossfadeEnabled = settingsPreferences.crossfadeEnabled.asState(false)
 
     val crossfadeDurationMs = settingsPreferences.crossfadeDurationMs.asState(CrossfadePolicy.DEFAULT_DURATION_MS)
+
+    val audioEffectEnabled = settingsPreferences.audioEffectEnabled.asState(false)
+
+    val audioEffectPreset = settingsPreferences.audioEffectPreset.asState(AudioEffectSettings.DEFAULT_PRESET)
+
+    val audioEffectBands = settingsPreferences.audioEffectBands.asState(AudioEffectSettings.DEFAULT_BANDS)
+
+    val bassBoostStrength = settingsPreferences.bassBoostStrength.asState(0)
 
     val wifiOnlyPlay = settingsPreferences.wifiOnlyPlay.asState(false)
 
@@ -373,6 +382,26 @@ class SettingsViewModel(
     fun updateCrossfadeEnabled(enabled: Boolean) = launchSave { settingsPreferences.saveCrossfadeEnabled(enabled) }
 
     fun updateCrossfadeDurationMs(durationMs: Int) = launchSave { settingsPreferences.saveCrossfadeDurationMs(durationMs) }
+
+    fun updateAudioEffectEnabled(enabled: Boolean) = launchSave { settingsPreferences.saveAudioEffectEnabled(enabled) }
+
+    // 选预设时把曲线一起落盘，回到「自定义」时滑杆才是刚刚听到的那条曲线
+    fun updateAudioEffectPreset(preset: Int) = launchSave {
+        settingsPreferences.saveAudioEffectPreset(preset, AudioEffectSettings.levelsForPreset(preset))
+    }
+
+    // 拖动任一频段即视为自定义：预设切到 CUSTOM，同时写入新曲线
+    fun updateAudioEffectBand(index: Int, level: Int) = launchSave {
+        val bands = audioEffectBands.value.toMutableList()
+        if (index in bands.indices) {
+            bands[index] = level
+            settingsPreferences.saveAudioEffectPreset(AudioEffectSettings.PRESET_CUSTOM, bands)
+        }
+    }
+
+    fun updateBassBoostStrength(strength: Int) = launchSave {
+        settingsPreferences.saveBassBoostStrength(strength)
+    }
 
     fun updateWifiOnlyPlay(enabled: Boolean) = launchSave { settingsPreferences.saveWifiOnlyPlay(enabled) }
 

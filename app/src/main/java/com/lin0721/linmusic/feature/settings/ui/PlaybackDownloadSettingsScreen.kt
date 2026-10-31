@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lin0721.linmusic.LocalBottomOverlayInset
+import com.lin0721.linmusic.core.player.AudioEffectSettings
 import com.lin0721.linmusic.core.player.CrossfadePolicy
 import com.lin0721.linmusic.feature.player.ui.LyricCapsuleSlider
 import com.lin0721.linmusic.core.ui.components.ToastManager
@@ -78,6 +79,10 @@ fun PlaybackDownloadSettingsView(viewModel: SettingsViewModel) {
     val resumeAfterExternalInterruption by viewModel.resumeAfterExternalInterruption.collectAsStateWithLifecycle()
     val crossfadeEnabled by viewModel.crossfadeEnabled.collectAsStateWithLifecycle()
     val crossfadeDurationMs by viewModel.crossfadeDurationMs.collectAsStateWithLifecycle()
+    val audioEffectEnabled by viewModel.audioEffectEnabled.collectAsStateWithLifecycle()
+    val audioEffectPreset by viewModel.audioEffectPreset.collectAsStateWithLifecycle()
+    val audioEffectBands by viewModel.audioEffectBands.collectAsStateWithLifecycle()
+    val bassBoostStrength by viewModel.bassBoostStrength.collectAsStateWithLifecycle()
     val streamCacheEnabled by viewModel.streamCacheEnabled.collectAsStateWithLifecycle()
     val downloadFolderUri by viewModel.downloadFolderUri.collectAsStateWithLifecycle()
     val downloadLyricsEnabled by viewModel.downloadLyricsEnabled.collectAsStateWithLifecycle()
@@ -169,6 +174,25 @@ fun PlaybackDownloadSettingsView(viewModel: SettingsViewModel) {
                         )
                     }
                 }
+
+                HorizontalDivider(color = MelodiaColors.Divider)
+                SettingsSwitchRow(
+                    title = "音效调节",
+                    subtitle = "均衡器与低音增强，蓝牙与扬声器均生效；开启后会自动关闭硬件音频解码",
+                    checked = audioEffectEnabled,
+                    onCheckedChange = { viewModel.updateAudioEffectEnabled(it) }
+                )
+                if (audioEffectEnabled) {
+                    // 控件本体与播放页弹层共用，避免两处各维护一套
+                    AudioEffectControls(
+                        preset = audioEffectPreset,
+                        bands = audioEffectBands,
+                        bassStrength = bassBoostStrength,
+                        onPresetSelected = viewModel::updateAudioEffectPreset,
+                        onBandChanged = viewModel::updateAudioEffectBand,
+                        onBassChanged = viewModel::updateBassBoostStrength
+                    )
+                }
             }
         }
         item {
@@ -210,3 +234,5 @@ fun PlaybackDownloadSettingsView(viewModel: SettingsViewModel) {
         }
     }
 }
+
+// 频段与增益的显示格式化已移到 AudioEffectControls.kt，与播放页弹层共用

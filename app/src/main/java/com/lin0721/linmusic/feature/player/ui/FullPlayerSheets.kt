@@ -50,6 +50,7 @@ fun FullPlayerSheets(
     onCollectClick: () -> Unit,
     onShareClick: () -> Unit,
     onDownloadClick: () -> Unit,
+    onAudioEffectClick: () -> Unit,
     onSaveCollection: (Long, List<PlaylistCollectItem>) -> Unit,
     onSaveNewCollection: (String, Long) -> Unit,
     onCollectDismiss: () -> Unit,
@@ -105,6 +106,7 @@ fun FullPlayerSheets(
             onCollectClick = onCollectClick,
             onShareClick = onShareClick,
             onDownloadClick = onDownloadClick,
+            onAudioEffectClick = onAudioEffectClick,
             onDismiss = onMoreOptionsDismiss
         )
     }

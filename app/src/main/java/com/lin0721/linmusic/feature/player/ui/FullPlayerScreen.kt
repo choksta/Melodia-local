@@ -15,6 +15,8 @@ import androidx.compose.foundation.gestures.scrollBy
 import com.lin0721.linmusic.core.comment.domain.CommentFloorState
 import com.lin0721.linmusic.core.comment.ui.CommentFloorScreen
 import com.lin0721.linmusic.core.comment.ui.CommentFullScreen
+import com.lin0721.linmusic.core.comment.ui.CommentsState
+import com.lin0721.linmusic.core.model.CommentItem
 import com.lin0721.linmusic.core.ui.theme.LightStatusBarIconsWhile
 import com.lin0721.linmusic.core.ui.theme.LocalUiMotion
 import com.lin0721.linmusic.core.ui.theme.MelodiaColors
@@ -57,6 +59,7 @@ import com.lin0721.linmusic.core.share.ShareCardKind
 import com.lin0721.linmusic.core.ui.components.ToastManager
 import com.lin0721.linmusic.core.ui.theme.themedCoverBase
 import com.lin0721.linmusic.feature.player.share.LyricShareSheet
+import com.lin0721.linmusic.feature.settings.ui.AudioEffectSheet
 import com.lin0721.linmusic.core.ui.theme.FallbackBackdropPalette
 import com.lin0721.linmusic.core.ui.theme.MelodiaOrientationClass
 import com.lin0721.linmusic.core.ui.theme.PaletteMemoryCache
@@ -226,13 +229,11 @@ private fun FullPlayerScreenContent(
         }
     }
     var showMoreOptionsSheet by remember { mutableStateOf(false) }
+    var showAudioEffectSheet by remember { mutableStateOf(false) }
     var showShareCard by remember { mutableStateOf(false) }
     var showTimerSheet by remember { mutableStateOf(false) }
     var showCommentsSheet by remember { mutableStateOf(false) }
     var showCommentFloor by remember { mutableStateOf(false) }
-    val composerState by viewModel.composerState.collectAsStateWithLifecycle()
-    val floorState by viewModel.floorState.collectAsStateWithLifecycle()
-    val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
     var collectSongId by remember { mutableStateOf<Long?>(null) }
     var showOutputDeviceSheet by remember { mutableStateOf(false) }
     var showDownloadQualitySheet by remember { mutableStateOf(false) }
@@ -1007,6 +1008,7 @@ private fun FullPlayerScreenContent(
             },
             onShareClick = { shareCurrentSong() },
             onDownloadClick = { showDownloadQualitySheet = true },
+            onAudioEffectClick = { showAudioEffectSheet = true },
             onSaveCollection = { songId, items -> viewModel.savePlaylistCollection(songId, items) },
             onSaveNewCollection = { name, songId -> viewModel.createPlaylistAndAddSong(name, songId) },
             onCollectDismiss = { collectSongId = null },
@@ -1020,18 +1022,23 @@ private fun FullPlayerScreenContent(
             onOutputDeviceDismiss = { showOutputDeviceSheet = false }
         )
 
+        // 音效调节：从「更多」菜单进来，不离开播放页就能调
+        if (showAudioEffectSheet) {
+            AudioEffectSheet(
+                settingsPreferences = settingsPreferences,
+                onDismiss = { showAudioEffectSheet = false }
+            )
+        }
+
         AnimatedVisibility(
             visible = showCommentsSheet,
             enter = slideInVertically(uiTween(ScreenSlideDurationMs)) { it } + fadeIn(uiTween(ScreenSlideDurationMs)),
             exit = slideOutVertically(uiTween(ScreenSlideDurationMs)) { it } + fadeOut(uiTween(ScreenSlideDurationMs))
         ) {
-            CommentFullScreen(
+            FullPlayerCommentsSheet(
+                viewModel = viewModel,
                 commentsState = commentsState,
-                currentUserId = userProfile?.uid,
-                composerState = composerState,
                 onBack = { showCommentsSheet = false },
-                onSortChange = viewModel::changeCommentSort,
-                onLikeComment = viewModel::likeComment,
                 onUserClick = { uid ->
                     showCommentsSheet = false
                     onNavigateToProfile(uid)
@@ -1039,18 +1046,7 @@ private fun FullPlayerScreenContent(
                 onExpandFloor = { comment ->
                     showCommentFloor = true
                     viewModel.openCommentFloor(comment)
-                },
-                onDeleteClick = { comment -> viewModel.deleteCommentItem(comment) },
-                onSubmitComment = { content, target ->
-                    if (target != null) {
-                        viewModel.submitCommentReply(target.commentId, content)
-                    } else {
-                        viewModel.submitComment(content)
-                    }
-                },
-                onRequireLogin = { ToastManager.showToast("请先登录账号") },
-                onLoadMore = viewModel::loadMoreComments,
-                onRetry = { viewModel.retryComments() }
+                }
             )
         }
 
@@ -1059,19 +1055,9 @@ private fun FullPlayerScreenContent(
             enter = slideInVertically(uiTween(ScreenSlideDurationMs)) { it } + fadeIn(uiTween(ScreenSlideDurationMs)),
             exit = slideOutVertically(uiTween(ScreenSlideDurationMs)) { it } + fadeOut(uiTween(ScreenSlideDurationMs))
         ) {
-            CommentFloorScreen(
-                floorState = floorState,
-                currentUserId = userProfile?.uid,
-                composerState = composerState,
+            FullPlayerCommentFloorSheet(
+                viewModel = viewModel,
                 onBack = { showCommentFloor = false },
-                onLoadMore = viewModel::loadMoreCommentFloor,
-                onSubmitReply = { parentCommentId, content ->
-                    viewModel.submitCommentReply(parentCommentId, content)
-                },
-                onRequireLogin = { ToastManager.showToast("请先登录账号") },
-                onDeleteClick = { comment -> viewModel.deleteCommentItem(comment) },
-                onLikeClick = { comment -> viewModel.likeComment(comment) },
-                onRetry = { (floorState as? CommentFloorState.Success)?.ownerComment?.let(viewModel::openCommentFloor) },
                 onUserClick = onNavigateToProfile
             )
         }
@@ -1150,4 +1136,70 @@ private fun FullPlayerScreenContent(
             )
         }
     }
+}
+
+/**
+ * 评论面板连同它需要的状态一起收进来。
+ *
+ * 这三个状态（输入框状态、楼层状态、用户资料）原来挂在播放页根层，看起来无害，
+ * 但输入框每敲一个字就会发一次新值 —— 于是整个播放页（封面、歌词、快捷操作行……）
+ * 跟着重组一遍。收进面板内部之后，打字只重组面板自己。
+ */
+@Composable
+private fun FullPlayerCommentsSheet(
+    viewModel: PlayerViewModel,
+    commentsState: CommentsState,
+    onBack: () -> Unit,
+    onUserClick: (Long) -> Unit,
+    onExpandFloor: (CommentItem) -> Unit
+) {
+    val composerState by viewModel.composerState.collectAsStateWithLifecycle()
+    val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
+    CommentFullScreen(
+        commentsState = commentsState,
+        currentUserId = userProfile?.uid,
+        composerState = composerState,
+        onBack = onBack,
+        onSortChange = viewModel::changeCommentSort,
+        onLikeComment = viewModel::likeComment,
+        onUserClick = onUserClick,
+        onExpandFloor = onExpandFloor,
+        onDeleteClick = { comment -> viewModel.deleteCommentItem(comment) },
+        onSubmitComment = { content, target ->
+            if (target != null) {
+                viewModel.submitCommentReply(target.commentId, content)
+            } else {
+                viewModel.submitComment(content)
+            }
+        },
+        onRequireLogin = { ToastManager.showToast("请先登录账号") },
+        onLoadMore = viewModel::loadMoreComments,
+        onRetry = { viewModel.retryComments() }
+    )
+}
+
+@Composable
+private fun FullPlayerCommentFloorSheet(
+    viewModel: PlayerViewModel,
+    onBack: () -> Unit,
+    onUserClick: (Long) -> Unit
+) {
+    val floorState by viewModel.floorState.collectAsStateWithLifecycle()
+    val composerState by viewModel.composerState.collectAsStateWithLifecycle()
+    val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
+    CommentFloorScreen(
+        floorState = floorState,
+        currentUserId = userProfile?.uid,
+        composerState = composerState,
+        onBack = onBack,
+        onLoadMore = viewModel::loadMoreCommentFloor,
+        onSubmitReply = { parentCommentId, content ->
+            viewModel.submitCommentReply(parentCommentId, content)
+        },
+        onRequireLogin = { ToastManager.showToast("请先登录账号") },
+        onDeleteClick = { comment -> viewModel.deleteCommentItem(comment) },
+        onLikeClick = { comment -> viewModel.likeComment(comment) },
+        onRetry = { (floorState as? CommentFloorState.Success)?.ownerComment?.let(viewModel::openCommentFloor) },
+        onUserClick = onUserClick
+    )
 }
