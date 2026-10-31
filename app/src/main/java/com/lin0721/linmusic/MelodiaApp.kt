@@ -3,6 +3,7 @@ package com.lin0721.linmusic
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.fadeIn
@@ -414,10 +415,18 @@ fun MelodiaApp() {
             gesturesEnabled = userProfile != null && !isEdgeSwipeBlocked,
             scrimColor = Color.Black.copy(alpha = 0.45f),
             drawerContent = {
+                // 抽屉瞬时到位（见 MelodiaSidebarState.open），所以这里的动画只管
+                // 「浮现」：面板淡入 + 主内容轻轻后退，位置始终不动，中途点半透明菜单项也是准的
+                val drawerReveal by animateFloatAsState(
+                    targetValue = if (sidebar.isOpen) 1f else 0f,
+                    animationSpec = tween(220, easing = FastOutSlowInEasing),
+                    label = "drawer_reveal"
+                )
                 ModalDrawerSheet(
                     modifier = Modifier
                         .width(SidebarWidth)
-                        .fillMaxHeight(),
+                        .fillMaxHeight()
+                        .graphicsLayer { alpha = drawerReveal },
                     drawerShape = RectangleShape,
                     drawerContainerColor = MelodiaColors.Background
                 ) {
@@ -446,9 +455,21 @@ fun MelodiaApp() {
         ) {
 
         // 2. 主页面内容层（不再平移，侧边栏是盖在上面的独立浮层）
+        // 侧栏的「层次感」由这里承担：抽屉打开时主内容轻微后退并压暗，
+        // 视觉上像被推开一点，但主内容本身不参与命中（遮罩在它上面），所以安全
+        val contentRecede by animateFloatAsState(
+            targetValue = if (sidebar.isOpen) 1f else 0f,
+            animationSpec = tween(220, easing = FastOutSlowInEasing),
+            label = "content_recede"
+        )
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .graphicsLayer {
+                    val s = 1f - 0.04f * contentRecede
+                    scaleX = s
+                    scaleY = s
+                }
                 .onSizeChanged { contentLayerWidth = with(density) { it.width.toDp() } }
                 .background(if (isPanelDocked) MelodiaColors.WindowBackground else MelodiaColors.Background)
         ) {

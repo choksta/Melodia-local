@@ -27,8 +27,15 @@ class MelodiaSidebarState(
 
     val isOpen: Boolean get() = drawerState.currentValue == DrawerValue.Open
 
+    /**
+     * 瞬时到位，不做滑入。
+     *
+     * 滑入动画的 300ms 里面板位置一直在变，用户看到一点就去点，那个位置此刻还是
+     * 遮罩——「打开后不能秒交互」就是这么来的。位置固定之后，看到多少点多少。
+     * 过渡感不靠位移，而由两件事承担：面板自身淡入 + 主内容轻微后退（见 MelodiaApp）。
+     */
     fun open() {
-        scope.launch { drawerState.open() }
+        scope.launch { drawerState.snapTo(DrawerValue.Open) }
     }
 
     fun close() {
