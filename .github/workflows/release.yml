@@ -1,8 +1,25 @@
 name: Release
 
 # 推送 v1.2.3 / v1.2.3-beta.1 / v1.2.3-beta.1-local28 形式的 tag 时触发：
-# 用 secrets 里的正式签名构建 APK，成功后才创建 GitHub Release。
-# -localN 是本仓库的构建序号，只影响版本名与文件名，不参与 versionCode。
+# 用 secrets 里的签名构建 APK，成功后才创建 GitHub Release。
+#
+# ⚠️ 签名策略（改动前务必读完，否则会让所有已安装的用户无法覆盖升级）
+# ---------------------------------------------------------------------------
+# 发布签名固定用「本机 ~/.android/debug.keystore」那把钥匙，证书指纹
+#   0D:32:1B:9D:A9:99:04:08:58:8E:3D:A5:B2:1E:E8:F1:DE:B4:3E:11:96:A2:44:3E:F5:D6:1A:30:09:2E:00:7C
+# 原因：GitHub 上 local1~local5 以及用户手机上装的版本都是它，只有同签名才能
+# 直接覆盖安装。换成任何别的 keystore 都会导致 INSTALL_FAILED_UPDATE_INCOMPATIBLE，
+# 用户必须先卸载（登录态、歌单、设置全部丢失）。
+#
+# 「校验签名指纹与预期一致」那一步就是这条约束的硬门禁：指纹不匹配直接失败，
+# 不会静默发出一个装不上的包。换签名时那一步和 secrets 都必须同步改，
+# 并且要接受「所有已安装用户必须卸载重装」的代价。
+#
+# -localN 参与 versionCode（20512 + N），App 的更新检查靠比较 versionCode 判断更新；
+# 若不让它参与，同一个 beta.1 反复发版时 code 永远不变，客户端会一直认为已是最新。
+# Release 正文里的 <!-- versionCode=N --> 标记同样是必需的，客户端解析 tag 时
+# 会跳过含 -local 的，只认这个标记。
+#
 # 预发布 tag 允许打在 main 或 dev，正式版 tag 必须打在 main 上，否则直接失败。
 # 手动运行为演练：按输入的版本号打包、作为 artifact 留存，不创建 Release
 on:
