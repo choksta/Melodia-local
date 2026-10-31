@@ -102,15 +102,15 @@ fun MelodiaNavHost(
             val forward = targetState.screen != Screen.Home
             val offsetY = 40
             if (forward) {
-                (fadeIn(motion.tween(300, easing = FastOutSlowInEasing))
-                        + slideInVertically(motion.tween(300, easing = FastOutSlowInEasing)) { offsetY })
+                // 新内容只淡入、不做位移：位置从第一帧就是最终的，动画期间点哪中哪。
+                // 位移交给旧内容退场，动感还在，但不会「看着控件在动却点不中」
+                fadeIn(motion.tween(260, easing = FastOutSlowInEasing))
                     .togetherWith(
                         fadeOut(motion.tween(180, easing = FastOutSlowInEasing))
                                 + slideOutVertically(motion.tween(180, easing = FastOutSlowInEasing)) { -offsetY }
                     )
             } else {
-                (fadeIn(motion.tween(300, easing = FastOutSlowInEasing))
-                        + slideInVertically(motion.tween(300, easing = FastOutSlowInEasing)) { -offsetY })
+                fadeIn(motion.tween(260, easing = FastOutSlowInEasing))
                     .togetherWith(
                         fadeOut(motion.tween(180, easing = FastOutSlowInEasing))
                                 + slideOutVertically(motion.tween(180, easing = FastOutSlowInEasing)) { offsetY }

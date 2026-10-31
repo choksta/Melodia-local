@@ -131,14 +131,15 @@ fun SettingsScreen(
                 targetState = activeSubMenu,
                 transitionSpec = {
                     motion.transform(
+                        // 新菜单原地淡入：位置从第一帧就是最终的，动画期间也能点准。
+                        // 横向位移交给旧菜单退场，推入的观感还在，但不会出现
+                        // 「菜单正从右边滑过来、点它却点空」的情况
                         if (targetState != null) {
-                            // 进入子菜单：从右往左滑入
-                            slideInHorizontally { width -> width } + fadeIn() togetherWith
-                                    slideOutHorizontally { width -> -width } + fadeOut()
+                            fadeIn() togetherWith
+                                    (slideOutHorizontally { width -> -width } + fadeOut())
                         } else {
-                            // 返回主菜单：从左向右滑入
-                            slideInHorizontally { width -> -width } + fadeIn() togetherWith
-                                    slideOutHorizontally { width -> width } + fadeOut()
+                            fadeIn() togetherWith
+                                    (slideOutHorizontally { width -> width } + fadeOut())
                         }
                     )
                 },

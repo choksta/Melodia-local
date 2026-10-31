@@ -169,15 +169,13 @@ fun LibraryScreen(
                 val forward = targetState
                 val offsetY = 40
                 if (forward) {
-                    (fadeIn(motion.tween(240, easing = FastOutSlowInEasing))
-                            + slideInVertically(motion.tween(240, easing = FastOutSlowInEasing)) { offsetY })
+                    fadeIn(motion.tween(200, easing = FastOutSlowInEasing))
                         .togetherWith(
                             fadeOut(motion.tween(200, easing = FastOutSlowInEasing))
                                     + slideOutVertically(motion.tween(200, easing = FastOutSlowInEasing)) { -offsetY }
                         )
                 } else {
-                    (fadeIn(motion.tween(240, easing = FastOutSlowInEasing))
-                            + slideInVertically(motion.tween(240, easing = FastOutSlowInEasing)) { -offsetY })
+                    fadeIn(motion.tween(200, easing = FastOutSlowInEasing))
                         .togetherWith(
                             fadeOut(motion.tween(200, easing = FastOutSlowInEasing))
                                     + slideOutVertically(motion.tween(200, easing = FastOutSlowInEasing)) { offsetY }
