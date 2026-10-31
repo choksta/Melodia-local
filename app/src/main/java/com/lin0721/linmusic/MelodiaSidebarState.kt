@@ -36,23 +36,25 @@ class MelodiaSidebarState(
     }
 
     /**
-     * 先等抽屉完全收起，再执行 [action]。
+     * 关闭抽屉并立刻执行 [action]。
      *
-     * 点菜单项时若「启动关闭动画」和「跳转页面」同时发生，新页面会先渲染，
-     * 而抽屉还要滑出 300ms——那半秒里侧栏压在新页面上，就是画面残留。
+     * 曾经试过「等关闭动画走完再跳」：`drawerState.close()` 之后调 action。
+     * 但 close 的动画会被手势取消（点击的 UP 事件被 anchoredDraggable 当成拖动结束），
+     * animateTo 抛 CancellationException，协程结束、action 轮不到执行；
+     * 更糟的是状态可能停在不确定的位置，`isOpen` 仍为 true——
+     * 之后按返回键会一直去「收抽屉」而不是「返回上一页」，返回就彻底失灵了。
      *
-     * 但 [DrawerState.close] 的动画**会被手势取消**：点击的 UP 事件会被
-     * anchoredDraggable 当成「拖动结束」，animateTo 抛 CancellationException，
-     * 协程就此结束、后面的 action 永远轮不到执行（实测：点菜单只关抽屉不跳转）。
-     * 所以放进 finally——正常关闭就等它走完再跳，被打断也照样跳。
+     * 所以改成瞬时关闭：snapTo 是确定的状态变更，不会被打断、也不会留下半开状态；
+     * 关闭后再导航，新页面出来时抽屉已经不在了，不存在残留。
+     * 打开仍有 Material 原生滑入动画，收起时干脆利落，符合抽屉的一般手感。
      */
     fun closeThen(action: () -> Unit) {
+        // 同一协程内先关后跳：snapTo 是确定的状态变更（不是动画，不会被打断），
+        // 保证 currentValue 真的回到 Closed，否则 isOpen 停在 true 会让返回键
+        // 一直去「收抽屉」而不是「返回上一页」。
         scope.launch {
-            try {
-                drawerState.close()
-            } finally {
-                action()
-            }
+            drawerState.snapTo(DrawerValue.Closed)
+            action()
         }
     }
 }
@@ -64,13 +66,18 @@ fun rememberMelodiaSidebarState(): MelodiaSidebarState {
         // 用数组持有自身引用，供 confirmStateChange 判断「是否正滑到一半」
         val holder = arrayOfNulls<DrawerState>(1)
         DrawerState(DrawerValue.Closed) { target ->
-            // 抽屉还在滑动时忽略关闭请求。
+            // 只在「正从关闭滑向打开」这段里忽略关闭请求。
             //
             // 面板滑入的这 300ms 里，用户看到一点就会去点，而那个位置此刻还是遮罩；
             // 若照单全收，抽屉会「刚打开又自己关上」，表现就是「点不了还消失了」。
-            // 忽略掉之后，点早了只是没反应，抽屉继续滑入，到位就能正常点。
-            val sliding = holder[0]?.let { it.currentValue != it.targetValue } ?: false
-            !(target == DrawerValue.Closed && sliding)
+            //
+            // 条件必须收得很窄：一旦写成「currentValue != targetValue」，
+            // 打开动画刚结束的临界点上仍然成立，此时连程序发起的关闭都会被拒绝，
+            // 抽屉状态就卡在 Open —— 紧接着返回键会一直去「收抽屉」，返回彻底失灵。
+            val opening = holder[0]?.let {
+                it.targetValue == DrawerValue.Open && it.currentValue == DrawerValue.Closed
+            } ?: false
+            !(target == DrawerValue.Closed && opening)
         }.also { holder[0] = it }
     }
     return remember(scope, drawerState) { MelodiaSidebarState(scope, drawerState) }
