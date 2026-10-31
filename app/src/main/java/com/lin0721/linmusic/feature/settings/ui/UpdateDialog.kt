@@ -1,5 +1,6 @@
 package com.lin0721.linmusic.feature.settings.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -140,11 +141,30 @@ fun UpdateDialog(
                 Spacer(modifier = Modifier.height(12.dp))
                 when (val s = state) {
                     is InstallState.Downloading -> DownloadProgressRow(s)
-                    is InstallState.Failed -> Text(
-                        text = s.message,
-                        color = MelodiaColors.AccentText,
-                        fontSize = 12.sp
-                    )
+                    is InstallState.Failed -> Column {
+                        Text(
+                            text = s.message,
+                            color = MelodiaColors.AccentText,
+                            fontSize = 12.sp
+                        )
+                        // 应用内下载全失败时得有出路：一直点「重试」大概率还是同样的结果，
+                        // 能退到浏览器下载，用户才不至于卡在这个弹窗里
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "改用浏览器下载",
+                            color = MelodiaColors.AccentText,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable {
+                                runCatching { uriHandler.openUri(info.releasePageUrl) }
+                                    .onSuccess { onHide() }
+                                    .onFailure { e ->
+                                        AppLogger.e(TAG, "打开发布页失败", e)
+                                        ToastManager.showToast("无法打开浏览器，请手动访问 GitHub 发布页")
+                                    }
+                            }
+                        )
+                    }
                     is InstallState.Ready -> Text(
                         text = "已下载完成，正在调起安装…",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

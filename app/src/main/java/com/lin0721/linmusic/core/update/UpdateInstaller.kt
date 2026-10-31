@@ -103,6 +103,14 @@ object UpdateInstaller {
                     AppLogger.w(TAG, "下载源不可用或过慢，切换下一个：${candidate.take(60)}")
                     continue
                 }
+                // 镜像挂掉时经常返回一张 HTML 错误页，HTTP 200 且 Content-Length 正常，
+                // 下载过程看起来完全成功——不校验的话会把网页当安装包交给系统，
+                // 用户在"下载完成"之后才看到安装失败
+                if (!looksLikeApk(tmp)) {
+                    AppLogger.w(TAG, "下载内容不是 APK（镜像可能返回了错误页），换下一个源：${candidate.take(60)}")
+                    tmp.delete()
+                    continue
+                }
                 if (target.exists()) target.delete()
                 if (!tmp.renameTo(target)) error("下载完成但重命名失败")
                 onProgress(Progress(target.length(), target.length()))
@@ -114,7 +122,9 @@ object UpdateInstaller {
                 AppLogger.w(TAG, "下载源失败：${candidate.take(60)}", e)
             }
         }
-        throw lastError ?: IllegalStateException("所有下载源均不可用")
+        // 细节留给日志，界面只给一句能行动的话——重试大概率还是同样的结果
+        AppLogger.e(TAG, "所有下载源均失败", lastError)
+        throw IllegalStateException("连不上任何下载源，请改用浏览器下载")
     }
 
     /**
@@ -226,7 +236,12 @@ object UpdateInstaller {
             jobs.forEach { it.cancel() }
         }
 
-        if (results.isEmpty()) return candidates
+        if (results.isEmpty()) {
+            // 一个源都没探测通：只留原链接再试一次。
+            // 镜像是为了**加速**，连探测都过不了就没必要再陪它们各耗一次连接超时
+            // （三个源串行超时要干等一分钟），原链接至少是最可信的那条路。
+            return listOf(url)
+        }
         val ranked = results.sortedBy { it.second }.map { it.first }
         return ranked + candidates.filterNot { it in ranked }
     }
@@ -246,6 +261,27 @@ object UpdateInstaller {
                 }
             }.getOrNull()
         }
+    }
+
+    /**
+     * 粗略判断下下来的东西是不是 APK。
+     *
+     * APK 就是 zip，开头固定是 `PK\x03\x04`。只校验文件头而不是完整签名，
+     * 是因为这里要挡住的是「镜像返回了一张 HTML 错误页」这种低级故障；
+     * 包有没有被篡改由系统的签名校验兜底，改过的包装不上。
+     */
+    private fun looksLikeApk(file: File): Boolean {
+        if (file.length() < 4) return false
+        return runCatching {
+            file.inputStream().use { input ->
+                val head = ByteArray(4)
+                input.read(head) == 4 &&
+                    head[0] == 0x50.toByte() && // P
+                    head[1] == 0x4B.toByte() && // K
+                    head[2] == 0x03.toByte() &&
+                    head[3] == 0x04.toByte()
+            }
+        }.getOrDefault(false)
     }
 
     /** Android 8.0+ 需要用户在系统设置里允许本应用安装未知来源应用 */
