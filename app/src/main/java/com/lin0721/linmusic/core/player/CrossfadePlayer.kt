@@ -139,6 +139,10 @@ class CrossfadePlayer(
         if (pendingIncoming == null) return suggestedPlaceholderState
         return suggestedPlaceholderState.buildUpon()
             .setPlaybackState(Player.STATE_READY)
+            // 保持 READY 是为了让 isPlaying 不抖，但通知栏/锁屏的进度条此时确实停在 0，
+            // 看着像卡死。isLoading 是专门用来表达「在忙但仍在播」的字段，
+            // 它不影响 isPlaying，只让系统 UI 显示加载中。
+            .setIsLoading(true)
             .build()
     }
 

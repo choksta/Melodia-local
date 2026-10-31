@@ -55,7 +55,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
 
@@ -191,9 +190,9 @@ class MelodiaPlaybackService : MediaSessionService() {
             }
         }
 
-        // 缓存相关的两项配置：初值读一次，之后由 collect 保持最新（避免起播路径上的阻塞读取）
-        streamCacheEnabled = runBlocking { settingsPreferences.streamCacheEnabled.first() }
-        audioCacheMaxSizeBytes = runBlocking { settingsPreferences.audioCacheMaxSize.first() }
+        // 缓存相关的两项配置：字段有合理默认值，首值由下面的 collect 立刻覆盖。
+        // 不能在这里 runBlocking 读 DataStore——onCreate 正卡在「点播放 → 出声」的路径上，
+        // 每次起播同步读两次磁盘，白等的是用户的耐心。
         serviceScope.launch {
             settingsPreferences.streamCacheEnabled.collect { streamCacheEnabled = it }
         }
