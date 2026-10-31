@@ -102,18 +102,18 @@ fun MelodiaNavHost(
             val forward = targetState.screen != Screen.Home
             val offsetY = 40
             if (forward) {
-                (fadeIn(motion.tween(420, delayMillis = 100, easing = FastOutSlowInEasing))
-                        + slideInVertically(motion.tween(420, delayMillis = 100, easing = FastOutSlowInEasing)) { offsetY })
+                (fadeIn(motion.tween(300, easing = FastOutSlowInEasing))
+                        + slideInVertically(motion.tween(300, easing = FastOutSlowInEasing)) { offsetY })
                     .togetherWith(
-                        fadeOut(motion.tween(300, easing = FastOutSlowInEasing))
-                                + slideOutVertically(motion.tween(300, easing = FastOutSlowInEasing)) { -offsetY }
+                        fadeOut(motion.tween(180, easing = FastOutSlowInEasing))
+                                + slideOutVertically(motion.tween(180, easing = FastOutSlowInEasing)) { -offsetY }
                     )
             } else {
-                (fadeIn(motion.tween(420, delayMillis = 100, easing = FastOutSlowInEasing))
-                        + slideInVertically(motion.tween(420, delayMillis = 100, easing = FastOutSlowInEasing)) { -offsetY })
+                (fadeIn(motion.tween(300, easing = FastOutSlowInEasing))
+                        + slideInVertically(motion.tween(300, easing = FastOutSlowInEasing)) { -offsetY })
                     .togetherWith(
-                        fadeOut(motion.tween(300, easing = FastOutSlowInEasing))
-                                + slideOutVertically(motion.tween(300, easing = FastOutSlowInEasing)) { offsetY }
+                        fadeOut(motion.tween(180, easing = FastOutSlowInEasing))
+                                + slideOutVertically(motion.tween(180, easing = FastOutSlowInEasing)) { offsetY }
                     )
             }.using(SizeTransform(clip = false))
         },
