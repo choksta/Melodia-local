@@ -417,16 +417,17 @@ fun MelodiaApp() {
             )
             .background(MelodiaColors.Background)
     ) {
-        // 1. 侧边栏层 (位于最底层或同步移动)
+        // 1. 侧边栏层：固定在屏幕左侧，由主内容层滑开来「露出」
+        //
+        // 原来这一层自己也跟着滑入（translationX = offsetX - widthPx），
+        // 而展开用的是 StiffnessMediumLow 的弹簧动画，要 500ms 才停——
+        // 这半秒里侧边栏的按钮一直在动，用户按看到的位置点下去，命中的是它上一帧的位置，
+        // 所以「点了没反应」。固定之后，露出多少就能立刻点多少，动画没结束也能操作。
         userProfile?.let { profile ->
             Box(
                 modifier = Modifier
                     .width(SidebarWidth)
                     .fillMaxHeight()
-                    .graphicsLayer {
-                        translationX = sidebar.offsetX - sidebar.widthPx
-                        alpha = 0.5f + (0.5f * sidebar.progress)
-                    }
             ) {
                 ProfileSidebar(
                     userProfile = profile,
