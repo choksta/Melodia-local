@@ -96,7 +96,9 @@ fun UpdateDialog(
             return
         }
         val fileName = info.apkFileName ?: "Melodia-${info.versionName}.apk"
-        state = InstallState.Downloading(0, 0L, info.apkSizeBytes)
+        // total 先给 0：还没拿到响应头，界面据此显示「正在连接下载源…」，
+        // 拿到真实长度后 DownloadProgressRow 会自动切成确定进度条
+        state = InstallState.Downloading(0, 0L, 0L)
         downloadJob = scope.launch {
             try {
                 val file = UpdateInstaller.download(context, url, fileName) { p ->
@@ -219,34 +221,49 @@ fun UpdateDialog(
 
 @Composable
 private fun DownloadProgressRow(state: InstallState.Downloading) {
+    // total 未知（还没拿到响应头、正在探测下载源，或服务器用 chunked 编码）时
+    // 画成不确定进度条：此时 percent 恒为 0，确定进度条会一直显示 0% 像卡死了
+    val unknownTotal = state.total <= 0L
+    val label = when {
+        !unknownTotal -> "正在下载 ${state.percent}%"
+        state.downloaded <= 0L -> "正在连接下载源…"
+        else -> "正在下载 ${formatSize(state.downloaded)}"
+    }
     Column(modifier = Modifier.fillMaxWidth()) {
-        LinearProgressIndicator(
-            progress = { state.percent / 100f },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(4.dp),
-            color = MelodiaColors.AccentText
-        )
+        if (unknownTotal) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp),
+                color = MelodiaColors.AccentText
+            )
+        } else {
+            LinearProgressIndicator(
+                progress = { state.percent / 100f },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp),
+                color = MelodiaColors.AccentText
+            )
+        }
         Spacer(modifier = Modifier.height(6.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "正在下载 ${state.percent}%",
+                text = label,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp
             )
             Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = if (state.total > 0) {
-                    "${formatSize(state.downloaded)} / ${formatSize(state.total)}"
-                } else {
-                    formatSize(state.downloaded)
-                },
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 12.sp
-            )
+            if (!unknownTotal) {
+                Text(
+                    text = "${formatSize(state.downloaded)} / ${formatSize(state.total)}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp
+                )
+            }
         }
     }
 }

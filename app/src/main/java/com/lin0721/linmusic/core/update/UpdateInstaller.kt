@@ -9,9 +9,14 @@ import androidx.core.content.FileProvider
 import com.lin0721.linmusic.core.log.AppLogger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import java.util.Collections
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -35,11 +40,16 @@ object UpdateInstaller {
     private const val SLOW_CHECK_AFTER_MS = 6_000L
     private const val SLOW_MIN_BYTES = 400L * 1024
 
-    // 国内可用的 GitHub 加速镜像（按实测速度排序），最后回落官方直连
+    // 国内可用的 GitHub 加速镜像。这里的顺序只是兜底，真正用哪个由 rankSources 探测决定：
+    // 镜像会挂（ghfast.top 在 2026-11 已完全无响应），硬编码的「优先级」过不了多久就会过期，
+    // 届时下载会先卡满一个连接超时才换源，用户看到的就是进度条一直不动。
     private val MIRROR_PREFIXES = listOf(
-        "https://ghfast.top/",
-        "https://gh-proxy.org/"
+        "https://gh-proxy.org/",
+        "https://ghproxy.net/"
     )
+
+    // 探测超时：每个源并发发一个 1 字节 Range 请求，这么久没回应就当作不可用
+    private const val PROBE_TIMEOUT_MS = 4_000L
 
     // 下载走独立的客户端：读超时放宽，避免大包在慢网下被 30s 掐断
     private val client: OkHttpClient by lazy {
@@ -82,8 +92,12 @@ object UpdateInstaller {
         // 只保留当前要装的这一个包，避免历史版本堆在缓存里
         updateDir(context).listFiles()?.forEach { if (it.name != fileName && it.name != tmp.name) it.delete() }
 
+        // 先告诉 UI「还没拿到响应头」（total=0 时界面画不确定进度条）。
+        // 不这么做的话，探测各源的这几秒里进度条会停在 0%，看起来就是卡住了
+        onProgress(Progress(0L, 0L))
+
         var lastError: Exception? = null
-        for (candidate in candidateUrls(url)) {
+        for (candidate in rankSources(url)) {
             try {
                 if (!attemptDownload(candidate, tmp, onProgress)) {
                     AppLogger.w(TAG, "下载源不可用或过慢，切换下一个：${candidate.take(60)}")
@@ -184,6 +198,54 @@ object UpdateInstaller {
     private fun candidateUrls(url: String): List<String> {
         if (!url.contains("github.com/") && !url.contains("githubusercontent.com/")) return listOf(url)
         return MIRROR_PREFIXES.map { it + url } + url
+    }
+
+    /**
+     * 并发探测各源，按响应快慢排序。
+     *
+     * 镜像挂掉时最怕的不是失败，而是「排在前面却要等满连接超时」：原来 ghfast.top 无响应，
+     * 下载会先静默等 20 秒才换下一个源，界面上就是进度条一动不动。
+     *
+     * 这里并发发出 1 字节的 Range 请求，**只要有一个源通了就立即开工**，不等最慢的那个；
+     * 一个都没通才等到 [PROBE_TIMEOUT_MS]。探测没回的源仍保留在列表末尾——
+     * 可能只是探测请求被拦，实际下载是通的。
+     */
+    private suspend fun rankSources(url: String): List<String> {
+        val candidates = candidateUrls(url)
+        if (candidates.size <= 1) return candidates
+
+        val results = Collections.synchronizedList(mutableListOf<Pair<String, Long>>())
+        coroutineScope {
+            val jobs = candidates.map { candidate ->
+                launch { probe(candidate)?.let { results.add(candidate to it) } }
+            }
+            val deadline = System.currentTimeMillis() + PROBE_TIMEOUT_MS
+            while (results.isEmpty() && System.currentTimeMillis() < deadline) {
+                delay(40)
+            }
+            jobs.forEach { it.cancel() }
+        }
+
+        if (results.isEmpty()) return candidates
+        val ranked = results.sortedBy { it.second }.map { it.first }
+        return ranked + candidates.filterNot { it in ranked }
+    }
+
+    /** 返回响应耗时（毫秒），不可用返回 null */
+    private suspend fun probe(url: String): Long? = withTimeoutOrNull(PROBE_TIMEOUT_MS) {
+        withContext(Dispatchers.IO) {
+            val begin = System.currentTimeMillis()
+            runCatching {
+                client.newCall(
+                    Request.Builder()
+                        .url(url)
+                        .header("Range", "bytes=0-0")
+                        .build()
+                ).execute().use { response ->
+                    if (response.isSuccessful) System.currentTimeMillis() - begin else null
+                }
+            }.getOrNull()
+        }
     }
 
     /** Android 8.0+ 需要用户在系统设置里允许本应用安装未知来源应用 */
