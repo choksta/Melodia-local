@@ -2,6 +2,8 @@ package com.lin0721.linmusic
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -412,10 +414,19 @@ fun MelodiaApp() {
             gesturesEnabled = userProfile != null && !isEdgeSwipeBlocked,
             scrimColor = Color.Black.copy(alpha = 0.45f),
             drawerContent = {
+                // 面板瞬时到位（见 MelodiaSidebarState.open 的 snapTo），
+                // 过渡感靠这层淡入补：180ms 从透明到不透明，位置始终固定，
+                // 所以淡入过程中点半透明的菜单项也是准确的
+                val drawerAlpha by animateFloatAsState(
+                    targetValue = if (sidebar.isOpen) 1f else 0f,
+                    animationSpec = tween(180),
+                    label = "drawer_alpha"
+                )
                 ModalDrawerSheet(
                     modifier = Modifier
                         .width(SidebarWidth)
-                        .fillMaxHeight(),
+                        .fillMaxHeight()
+                        .graphicsLayer { alpha = drawerAlpha },
                     drawerShape = RectangleShape,
                     drawerContainerColor = MelodiaColors.Background
                 ) {
