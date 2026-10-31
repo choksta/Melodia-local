@@ -49,11 +49,15 @@ def api(path: str, auth: str):
             return json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:
         return {"error": e.code, "body": e.read().decode()[:200]}
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
+        # 网络抖动时不要让整个轮询挂掉（实测遇到过 SSL: UNEXPECTED_EOF）
+        # 返回空字典，调用方按「这一轮没拿到」处理，下一轮继续
+        return {}
 
 
 def find_run(tag: str, auth: str):
     data = api(f"/repos/{REPO}/actions/workflows/{WORKFLOW}/runs?per_page=20", auth)
-    for run in data.get("workflow_runs", []):
+    for run in data.get("workflow_runs", []):  # 取不到时是空列表，下一轮重试
         if run["head_branch"] == tag:
             return run
     return None
