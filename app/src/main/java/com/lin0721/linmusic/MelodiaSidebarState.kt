@@ -40,12 +40,19 @@ class MelodiaSidebarState(
      *
      * 点菜单项时若「启动关闭动画」和「跳转页面」同时发生，新页面会先渲染，
      * 而抽屉还要滑出 300ms——那半秒里侧栏压在新页面上，就是画面残留。
-     * 串成「收完再跳」，既是标准抽屉的节奏，也不会有残影。
+     *
+     * 但 [DrawerState.close] 的动画**会被手势取消**：点击的 UP 事件会被
+     * anchoredDraggable 当成「拖动结束」，animateTo 抛 CancellationException，
+     * 协程就此结束、后面的 action 永远轮不到执行（实测：点菜单只关抽屉不跳转）。
+     * 所以放进 finally——正常关闭就等它走完再跳，被打断也照样跳。
      */
     fun closeThen(action: () -> Unit) {
         scope.launch {
-            drawerState.close()
-            action()
+            try {
+                drawerState.close()
+            } finally {
+                action()
+            }
         }
     }
 }
