@@ -162,27 +162,83 @@ jobs:
             -PreleaseVersionCode=${{ needs.version.outputs.code }} \
             --no-daemon
 
-      # 四项签名 secret 缺任一项时 build.gradle.kts 会静默退回 debug 签名
+      # 四项签名 secret 缺任一项时 build.gradle.kts 会静默退回 debug 签名。
+      #
+      # 这一段刻意写得啰嗦：原版用 `DN=$(apksigner ... | grep -m1 ...)`，
+      # 一旦 APK 名字对不上或 apksigner 没输出证书，grep 返回 1，命令替换带着非零退出码
+      # 在 `set -e` 下**静默退出**——日志只有 "Process completed with exit code 1"，
+      # 完全看不出是找不到文件还是签名不对。所以这里每一步都单独判空，并且全部用
+      # `::error::` 输出，失败原因会直接显示在 check-run 注解里，不用登进去翻日志。
       - name: 校验正式签名生效
         run: |
-          APK=app/build/outputs/apk/release/Melodia-v${{ needs.version.outputs.name }}-release.apk
-          APKSIGNER=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -maxdepth 1 -type d | sort -V | tail -1)/apksigner
-          DN=$("$APKSIGNER" verify --print-certs "$APK" | grep -m1 'certificate DN')
-          echo "$DN"
-          if echo "$DN" | grep -qi "Android Debug"; then
-            echo "检测到 debug 签名，说明 RELEASE_* 四项 secret 未正确注入，已终止发布" >&2
+          set -u
+          APK_DIR=app/build/outputs/apk/release
+          APK="$APK_DIR/Melodia-v${{ needs.version.outputs.name }}-release.apk"
+          if [ ! -f "$APK" ]; then
+            echo "::error::找不到预期产物 $APK（版本名 ${{ needs.version.outputs.name }}）"
+            echo "目录实际内容："
+            ls -l "$APK_DIR" || true
+            # 兜底：目录里只有一个 release APK 时就用它，避免命名规则差异卡住发版
+            CANDIDATES=("$APK_DIR"/*-release.apk)
+            if [ "${#CANDIDATES[@]}" -eq 1 ] && [ -f "${CANDIDATES[0]}" ]; then
+              APK="${CANDIDATES[0]}"
+              echo "::warning::改用目录中唯一的 release 产物：$APK"
+            else
+              exit 1
+            fi
+          fi
+
+          # apksigner 的查找要足够宽容：runner 镜像升级会动 SDK 路径
+          # （注解里已经提示 ubuntu-latest 在 2026-10-19 起迁到 Ubuntu 26），
+          # 原版写死 "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"，一旦两个变量都空，
+          # find 对着 /build-tools 报错返回 1，整个 step 在 set -e 下静默退出。
+          APKSIGNER=""
+          if command -v apksigner >/dev/null 2>&1; then
+            APKSIGNER=$(command -v apksigner)
+          fi
+          if [ -z "$APKSIGNER" ]; then
+            for CANDIDATE in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" \
+                             /usr/local/lib/android/sdk "$HOME/Android/Sdk"; do
+              [ -n "$CANDIDATE" ] && [ -d "$CANDIDATE/build-tools" ] || continue
+              APKSIGNER=$(find "$CANDIDATE/build-tools" -maxdepth 2 -name apksigner -type f 2>/dev/null | sort -V | tail -1 || true)
+              [ -n "$APKSIGNER" ] && break
+            done
+          fi
+          if [ -z "$APKSIGNER" ]; then
+            echo "::error::找不到 apksigner，无法校验签名"
+            echo "ANDROID_HOME=${ANDROID_HOME:-<空>} ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-<空>}"
+            for CANDIDATE in /usr/local/lib/android/sdk "$HOME/Android/Sdk"; do
+              echo "探测 $CANDIDATE: $(ls -d "$CANDIDATE" 2>/dev/null || echo 不存在)"
+            done
             exit 1
           fi
+          echo "校验工具：$APKSIGNER"
+          echo "待校验文件：$APK"
+
+          CERTS=$("$APKSIGNER" verify --print-certs "$APK" 2>&1 || true)
+          echo "$CERTS"
+          if ! echo "$CERTS" | grep -qi "certificate DN"; then
+            echo "::error::apksigner 未输出证书信息，无法确认签名（详见上一条输出）"
+            exit 1
+          fi
+          if echo "$CERTS" | grep -qi "Android Debug"; then
+            echo "::error::检测到 debug 签名，说明 RELEASE_* 四项 secret 未正确注入，已终止发布"
+            exit 1
+          fi
+          echo "正式签名校验通过"
 
       - name: 清理 keystore
         if: always()
         run: rm -f melodia-release.jks
 
+      # 用通配而不是拼死文件名：命名规则一旦跟 build.gradle.kts 的 archivesName 有出入，
+      # 拼死的路径会让「构建成功但上传失败」，比什么都不传更难查
       - name: 上传 APK
         uses: actions/upload-artifact@v4
         with:
           name: android
-          path: app/build/outputs/apk/release/Melodia-v${{ needs.version.outputs.name }}-release.apk
+          path: app/build/outputs/apk/release/*-release.apk
+          if-no-files-found: error
           retention-days: 7
 
   publish:
