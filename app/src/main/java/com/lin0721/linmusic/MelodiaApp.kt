@@ -14,6 +14,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -413,42 +415,63 @@ fun MelodiaApp() {
         ModalNavigationDrawer(
             drawerState = sidebar.drawerState,
             gesturesEnabled = userProfile != null && !isEdgeSwipeBlocked,
-            scrimColor = Color.Black.copy(alpha = 0.45f),
+            scrimColor = Color.Transparent,
             drawerContent = {
-                // 抽屉瞬时到位（见 MelodiaSidebarState.open），所以这里的动画只管
-                // 「浮现」：面板淡入 + 主内容轻轻后退，位置始终不动，中途点半透明菜单项也是准的
-                val drawerReveal by animateFloatAsState(
+                // 自己接管面板位置与遮罩，不用框架的 spring（StiffnessMediumLow，
+                // 滑完要 400ms+，用户等不起）。
+                // - 面板位置由 offset 驱动：命中区域跟着一起移动，露出多少点多少
+                // - 时长压到 150ms：推入推出的过程还在，但不拖沓
+                // - 遮罩在滑动期间不接收点击：否则点早了会把刚开的抽屉关掉，
+                //   表现就是「点了还消失了」
+                val slide by animateFloatAsState(
                     targetValue = if (sidebar.isOpen) 1f else 0f,
-                    animationSpec = tween(220, easing = FastOutSlowInEasing),
-                    label = "drawer_reveal"
+                    animationSpec = tween(150, easing = FastOutSlowInEasing),
+                    label = "sidebar_slide"
                 )
-                ModalDrawerSheet(
-                    modifier = Modifier
-                        .width(SidebarWidth)
-                        .fillMaxHeight()
-                        .graphicsLayer { alpha = drawerReveal },
-                    drawerShape = RectangleShape,
-                    drawerContainerColor = MelodiaColors.Background
-                ) {
-                    userProfile?.let { profile ->
-                        ProfileSidebar(
-                            userProfile = profile,
-                            onLogout = {
-                                viewModel.logout()
-                                sidebar.close()
-                            },
-                            // 全部走 closeThen：等抽屉收完再跳，避免新页面先出来、
-                            // 侧栏还在滑出导致画面残留
-                            onNavigateToProfile = { uid -> sidebar.closeThen { navigation.openProfile(uid) } },
-                            onNavigateToRecentPlay = { sidebar.closeThen { navigation.openRecentPlay() } },
-                            onNavigateToListenData = { sidebar.closeThen { navigation.openListenData() } },
-                            onNavigateToCloud = { sidebar.closeThen { navigation.openCloud() } },
-                            onNavigateToDownloads = { sidebar.closeThen { navigation.openDownloads() } },
-                            onNavigateToMessage = { sidebar.closeThen { navigation.openMessage() } },
-                            onNavigateToSettings = { sidebar.closeThen { navigation.navigateTo(Screen.Settings) } },
-                            isDarkTheme = isDarkTheme,
-                            onToggleTheme = { sidebar.closeThen(onToggleTheme) }
-                        )
+                val drawerWidthPx = with(density) { SidebarWidth.toPx() }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.45f * slide))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                enabled = slide > 0.99f
+                            ) { sidebar.close() }
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(SidebarWidth)
+                            .fillMaxHeight()
+                            .offset { IntOffset((-(1f - slide) * drawerWidthPx).roundToInt(), 0) }
+                    ) {
+                        ModalDrawerSheet(
+                            modifier = Modifier
+                                .width(SidebarWidth)
+                                .fillMaxHeight(),
+                            drawerShape = RectangleShape,
+                            drawerContainerColor = MelodiaColors.Background
+                        ) {
+                            userProfile?.let { profile ->
+                                ProfileSidebar(
+                                    userProfile = profile,
+                                    onLogout = {
+                                        viewModel.logout()
+                                        sidebar.close()
+                                    },
+                                    onNavigateToProfile = { uid -> sidebar.closeThen { navigation.openProfile(uid) } },
+                                    onNavigateToRecentPlay = { sidebar.closeThen { navigation.openRecentPlay() } },
+                                    onNavigateToListenData = { sidebar.closeThen { navigation.openListenData() } },
+                                    onNavigateToCloud = { sidebar.closeThen { navigation.openCloud() } },
+                                    onNavigateToDownloads = { sidebar.closeThen { navigation.openDownloads() } },
+                                    onNavigateToMessage = { sidebar.closeThen { navigation.openMessage() } },
+                                    onNavigateToSettings = { sidebar.closeThen { navigation.navigateTo(Screen.Settings) } },
+                                    isDarkTheme = isDarkTheme,
+                                    onToggleTheme = { sidebar.closeThen(onToggleTheme) }
+                                )
+                            }
+                        }
                     }
                 }
             }
