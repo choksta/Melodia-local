@@ -87,7 +87,20 @@ jobs:
             esac
           fi
 
-          VERSION_CODE=$(( (MAJOR * 10000 + MINOR * 100 + PATCH) * 100 + SUB_CODE ))
+          # -localN 必须参与 versionCode 计算。
+          #
+          # 原来只用 semver 推导，同一个 beta.1 反复发版时 code 永远是 2010001——
+          # 本地序号从 local28 涨到 local29，versionCode 却一动不动，App 的更新检查
+          # （比较 versionCode）永远判不出新版本，表现就是「点了检查更新说已是最新」。
+          #
+          # 基数 20512 是为了衔接已有的本地序列：local28 = 20540，正是手机上装着的那个，
+          # 不能比它小，否则新包会变成降级安装。
+          LOCAL_NUM=$(printf '%s' "$TAG_NAME" | sed -nE 's/.*-local([0-9]+)$/\1/p')
+          if [ -n "$LOCAL_NUM" ]; then
+            VERSION_CODE=$(( 20512 + LOCAL_NUM ))
+          else
+            VERSION_CODE=$(( (MAJOR * 10000 + MINOR * 100 + PATCH) * 100 + SUB_CODE ))
+          fi
           echo "name=$TAG_NAME" >> "$GITHUB_OUTPUT"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
@@ -332,6 +345,11 @@ jobs:
           done < <(git log "$RANGE" --no-merges --pretty=format:'%s')
 
           {
+            # App 的更新检查靠这行 HTML 注释读 versionCode：tag 形如
+            # v2.1.0-beta.1-local29 无法用 semver 推导，客户端解析不到 code 就会
+            # **整条 release 被忽略**，表现同样是「检查更新说已是最新」。
+            # HTML 注释不会显示在发布页上。
+            echo "<!-- versionCode=${{ needs.version.outputs.code }} -->"
             for t in "${ORDER[@]}"; do
               if [ -n "${BUCKETS[$t]:-}" ]; then
                 echo "### ${TITLES[$t]}"
@@ -357,5 +375,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           body_path: release-notes.md
-          prerelease: ${{ needs.version.outputs.prerelease }}
+          # 一律发成正式 Release：本仓库只有 local 构建，没有「稳定版 / 预发布」之分，
+          # 而 GitHub 的 /releases/latest 只认非 prerelease——标成预发布会让 latest
+          # 永远停在旧版本（README 徽章、第三方工具、App 的更新检查都跟着错）
+          prerelease: false
           files: dist/*
