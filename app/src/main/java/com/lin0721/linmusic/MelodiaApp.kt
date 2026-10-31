@@ -29,6 +29,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -50,6 +52,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -196,7 +199,7 @@ fun MelodiaApp() {
 
     val playerSheet = rememberMelodiaPlayerSheetState()
     val navigation = rememberMelodiaNavigationState()
-    val sidebar = rememberMelodiaSidebarState(SidebarWidth)
+    val sidebar = rememberMelodiaSidebarState()
 
     // 动态同步底栏首个可用路由为首选根 Tab
     LaunchedEffect(bottomBarLayout) {
@@ -385,8 +388,6 @@ fun MelodiaApp() {
 
     // 面板停靠左侧时左边缘被面板占住，边缘拉出侧边栏会和面板内的拖动手势冲突
     val isEdgeSwipeBlocked = usePanel && isPanelAtStart && isPanelShown
-    val isDrawerDraggable = userProfile != null &&
-        (sidebar.isOpen || (sidebar.isTouchStartingAtEdge && !isEdgeSwipeBlocked))
 
     CompositionLocalProvider(
         LocalMelodiaWindowSizeClass provides windowSizeClass,
@@ -397,84 +398,58 @@ fun MelodiaApp() {
         modifier = Modifier
             .fillMaxSize()
             .onSizeChanged { playerSheet.onScreenSizeChanged(it.height.toFloat()) }
-            .pointerInput(sidebar.isOpen) {
-                val edgeWidthPx = with(density) { 32.dp.toPx() }
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent(PointerEventPass.Initial)
-                        val down = event.changes.firstOrNull { it.changedToDown() }
-                        if (down != null) {
-                            sidebar.onPointerDown(down.position.x, edgeWidthPx)
-                        }
-                        if (event.changes.all { !it.pressed }) {
-                            sidebar.onPointerUp()
-                        }
+            .background(MelodiaColors.Background)
+    ) {
+        // 侧边栏改用 Material3 的 ModalNavigationDrawer 承载。
+        //
+        // 原来是自己拿 AnchoredDraggableState + 平移手写的抽屉：主内容层平移让出位置，
+        // 面板露出来了但点击仍被主内容层吃掉，调布局偏移、调 zIndex 都没根治。
+        // 现在面板是独立的 drawerContent 槽，命中关系由官方实现保证；
+        // 边缘手势、遮罩点击关闭、开合动画全部内置。
+        // 视觉上从「内容被推开」变为「面板盖上来 + 遮罩变暗」。
+        ModalNavigationDrawer(
+            drawerState = sidebar.drawerState,
+            gesturesEnabled = userProfile != null && !isEdgeSwipeBlocked,
+            scrimColor = Color.Black.copy(alpha = 0.45f),
+            drawerContent = {
+                ModalDrawerSheet(
+                    modifier = Modifier
+                        .width(SidebarWidth)
+                        .fillMaxHeight(),
+                    drawerShape = RectangleShape,
+                    drawerContainerColor = MelodiaColors.Background
+                ) {
+                    userProfile?.let { profile ->
+                        ProfileSidebar(
+                            userProfile = profile,
+                            onLogout = {
+                                viewModel.logout()
+                                sidebar.close()
+                            },
+                            onDismiss = { sidebar.close() },
+                            onNavigateToProfile = { uid ->
+                                sidebar.close()
+                                navigation.openProfile(uid)
+                            },
+                            onNavigateToRecentPlay = { navigation.openRecentPlay() },
+                            onNavigateToListenData = { navigation.openListenData() },
+                            onNavigateToCloud = { navigation.openCloud() },
+                            onNavigateToDownloads = { navigation.openDownloads() },
+                            onNavigateToMessage = { navigation.openMessage() },
+                            onNavigateToSettings = { navigation.navigateTo(Screen.Settings) },
+                            isDarkTheme = isDarkTheme,
+                            onToggleTheme = onToggleTheme
+                        )
                     }
                 }
             }
-            .anchoredDraggable(
-                state = sidebar.draggableState,
-                orientation = Orientation.Horizontal,
-                enabled = isDrawerDraggable
-            )
-            .background(MelodiaColors.Background)
-    ) {
-        // 1. 侧边栏层：固定在屏幕左侧，由主内容层滑开来「露出」
-        //
-        // 原来这一层自己也跟着滑入（translationX = offsetX - widthPx），
-        // 而展开用的是 StiffnessMediumLow 的弹簧动画，要 500ms 才停——
-        // 这半秒里侧边栏的按钮一直在动，用户按看到的位置点下去，命中的是它上一帧的位置，
-        // 所以「点了没反应」。固定之后，露出多少就能立刻点多少，动画没结束也能操作。
-        userProfile?.let { profile ->
-            Box(
-                modifier = Modifier
-                    .width(SidebarWidth)
-                    .fillMaxHeight()
-                    // 展开时把侧边栏提到上层。命中测试按 z 序从高到低遍历，
-                    // 提到上层后左侧区域的点击一定先落到它身上，
-                    // 不会被「还在滑开、命中区域尚未完全让出」的主内容层吃掉。
-                    // 两者在 x 轴上不重叠（侧边栏固定占 [0, 310]，主内容被推走后从 310 起），
-                    // 所以提升 z 序不改视觉，只改谁先接收触摸。
-                    .zIndex(if (sidebar.progress > 0.001f) 1f else 0f)
-            ) {
-                ProfileSidebar(
-                    userProfile = profile,
-                    onLogout = {
-                        viewModel.logout()
-                        sidebar.close()
-                    },
-                    onDismiss = { sidebar.close() },
-                    onNavigateToProfile = { uid ->
-                        sidebar.close()
-                        navigation.openProfile(uid)
-                    },
-                    onNavigateToRecentPlay = { navigation.openRecentPlay() },
-                    onNavigateToListenData = { navigation.openListenData() },
-                    onNavigateToCloud = { navigation.openCloud() },
-                    onNavigateToDownloads = { navigation.openDownloads() },
-                    onNavigateToMessage = { navigation.openMessage() },
-                    onNavigateToSettings = { navigation.navigateTo(Screen.Settings) },
-                    isDarkTheme = isDarkTheme,
-                    onToggleTheme = onToggleTheme
-                )
-            }
-        }
+        ) {
 
-        // 2. 主页面内容层
+        // 2. 主页面内容层（不再平移，侧边栏是盖在上面的独立浮层）
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .onSizeChanged { contentLayerWidth = with(density) { it.width.toDp() } }
-                // 用 Modifier.offset 而不是 graphicsLayer.translationX：
-                // 前者真正改变布局位置，命中区域跟着一起移动；后者只保证绘制平移，
-                // 命中测试是否跟随取决于实现细节——侧边栏露出后点不进去就是这么来的。
-                .offset { IntOffset(sidebar.offsetX.roundToInt(), 0) }
-                .graphicsLayer {
-                    clip = true
-                    shape = RoundedCornerShape((sidebar.progress * 32).dp)
-                    shadowElevation = (sidebar.progress * 30f)
-                }
-                // 面板展开时画布压暗一档，靠缝隙处的明度差勾出两张卡片轮廓
                 .background(if (isPanelDocked) MelodiaColors.WindowBackground else MelodiaColors.Background)
         ) {
             // 双卡片模式下靠屏幕边一侧只留 sm，靠面板一侧让出面板宽度 + 两侧间距
@@ -600,19 +575,6 @@ fun MelodiaApp() {
                             onOverlayHeightChanged = { bottomOverlayHeight = it }
                         )
 
-                        // 侧边栏打开时的遮罩与点击收起事件
-                        if (sidebar.progress > 0f) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.4f * sidebar.progress))
-                                    .pressable(
-                                        style = MelodiaPress.None,
-                                        enabled = sidebar.isOpen,
-                                        onClick = { sidebar.close() }
-                                    )
-                            )
-                        }
                     }
                 }
 
@@ -710,6 +672,7 @@ fun MelodiaApp() {
                     )
                 }
             }
+        }
         }
 
         MelodiaFullPlayerOverlay(
