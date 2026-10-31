@@ -150,6 +150,38 @@ jobs:
             | tr -d '\r\n' \
             | base64 -d > melodia-release.jks
 
+      # 四项 secret 缺任意一项，build.gradle.kts 的 hasReleaseSigning 就是 false，
+      # release 会**静默退回 debug 签名**——构建照样成功，直到六分钟后才在校验步骤炸掉。
+      # 所以先在这里判一遍：只打印长度和 alias 名，不打印任何密码值。
+      - name: 检查签名材料是否齐全
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          set -u
+          MISSING=""
+          [ -n "$KEYSTORE_B64" ] || MISSING="$MISSING RELEASE_KEYSTORE_BASE64"
+          [ -n "$STORE_PASSWORD" ] || MISSING="$MISSING RELEASE_STORE_PASSWORD"
+          [ -n "$KEY_ALIAS" ] || MISSING="$MISSING RELEASE_KEY_ALIAS"
+          [ -n "$KEY_PASSWORD" ] || MISSING="$MISSING RELEASE_KEY_PASSWORD"
+          echo "keystore base64 长度 = ${#KEYSTORE_B64}"
+          echo "store password 长度 = ${#STORE_PASSWORD}"
+          echo "key alias = ${KEY_ALIAS:-<空>}"
+          echo "key password 长度 = ${#KEY_PASSWORD}"
+          if [ -n "$MISSING" ]; then
+            echo "::error::以下 secret 为空或未配置：$MISSING"
+            exit 1
+          fi
+          ls -l melodia-release.jks
+          if [ ! -s melodia-release.jks ]; then
+            echo "::error::melodia-release.jks 是空文件，RELEASE_KEYSTORE_BASE64 解码失败"
+            exit 1
+          fi
+          # 顺带确认 keystore 里真有这个 alias、密码也对得上（输出不含密码）
+          keytool -list -keystore melodia-release.jks -storepass "$STORE_PASSWORD" 2>&1 | head -15 || true
+
       - name: Release 构建（正式签名）
         env:
           RELEASE_STORE_FILE: melodia-release.jks
