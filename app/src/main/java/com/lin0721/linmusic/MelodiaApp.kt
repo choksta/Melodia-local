@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
@@ -59,6 +60,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -428,6 +430,12 @@ fun MelodiaApp() {
                 modifier = Modifier
                     .width(SidebarWidth)
                     .fillMaxHeight()
+                    // 展开时把侧边栏提到上层。命中测试按 z 序从高到低遍历，
+                    // 提到上层后左侧区域的点击一定先落到它身上，
+                    // 不会被「还在滑开、命中区域尚未完全让出」的主内容层吃掉。
+                    // 两者在 x 轴上不重叠（侧边栏固定占 [0, 310]，主内容被推走后从 310 起），
+                    // 所以提升 z 序不改视觉，只改谁先接收触摸。
+                    .zIndex(if (sidebar.progress > 0.001f) 1f else 0f)
             ) {
                 ProfileSidebar(
                     userProfile = profile,
@@ -457,8 +465,11 @@ fun MelodiaApp() {
             modifier = Modifier
                 .fillMaxSize()
                 .onSizeChanged { contentLayerWidth = with(density) { it.width.toDp() } }
+                // 用 Modifier.offset 而不是 graphicsLayer.translationX：
+                // 前者真正改变布局位置，命中区域跟着一起移动；后者只保证绘制平移，
+                // 命中测试是否跟随取决于实现细节——侧边栏露出后点不进去就是这么来的。
+                .offset { IntOffset(sidebar.offsetX.roundToInt(), 0) }
                 .graphicsLayer {
-                    translationX = sidebar.offsetX
                     clip = true
                     shape = RoundedCornerShape((sidebar.progress * 32).dp)
                     shadowElevation = (sidebar.progress * 30f)
