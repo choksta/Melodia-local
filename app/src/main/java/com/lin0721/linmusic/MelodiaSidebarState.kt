@@ -1,5 +1,6 @@
 package com.lin0721.linmusic
 
+import android.os.SystemClock
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.runtime.Composable
@@ -68,8 +69,23 @@ class MelodiaSidebarState(
      * 侧栏滑出的 150ms 里新页面已经淡入过半，切换是连续的。
      */
     fun closeThen(action: () -> Unit) {
+        // 告诉页面层：这次切换别淡入。
+        // 侧栏滑出本身就是过渡，新页面再从透明淡进来会多出「主页空档」——
+        // 侧栏已经走了、新页面还没显形，那一瞬就是用户说的「闪回主页」。
+        lastSidebarNavAt = SystemClock.uptimeMillis()
         action()
         scope.launch { drawerState.close() }
+    }
+
+    companion object {
+        /**
+         * 最近一次侧栏跳转的时间戳（uptimeMillis）。
+         *
+         * 用它而不是一次性布尔标志：AnimatedContent 的 transitionSpec 在某些情况下
+         * 会被重复求值，布尔标志可能被提前消耗掉，导致这次切换又淡入了。
+         * 用「300ms 窗口内发生的切换算侧栏触发」就不会有这个问题。
+         */
+        var lastSidebarNavAt: Long = 0L
     }
 }
 

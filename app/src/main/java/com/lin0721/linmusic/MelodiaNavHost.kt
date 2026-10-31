@@ -1,8 +1,11 @@
 package com.lin0721.linmusic
 
+import android.os.SystemClock
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -101,19 +104,30 @@ fun MelodiaNavHost(
         transitionSpec = {
             val forward = targetState.screen != Screen.Home
             val offsetY = 40
-            if (forward) {
+            // 从侧栏点菜单跳转时，入场淡入整个跳过：新页面直接就是最终样子。
+            // 否则会先露出一段旧页面（侧栏已滑走、新页面还没显形）——「闪回主页」。
+            val skipEnter = SystemClock.uptimeMillis() - MelodiaSidebarState.lastSidebarNavAt < 300
+            if (skipEnter) {
+                EnterTransition.None togetherWith
+                        ExitTransition.None
+            } else if (forward) {
                 // 新内容只淡入、不做位移：位置从第一帧就是最终的，动画期间点哪中哪。
-                // 位移交给旧内容退场，动感还在，但不会「看着控件在动却点不中」
-                fadeIn(motion.tween(260, easing = FastOutSlowInEasing))
+                // 位移交给旧内容退场，动感还在，但不会「看着控件在动却点不中」。
+                //
+                // initialAlpha 不能是 0：新内容在旧内容之上，从全透明起步意味着
+                // 头一两百毫秒里看到的是**完整的旧页面**。从侧栏点菜单时，
+                // 侧栏已经滑走、新页面还没显形，那一瞬就是「闪回主页」。
+                // 提到 0.7 后第一帧就基本盖住了，淡入感还在，但没有空档。
+                fadeIn(motion.tween(180, easing = FastOutSlowInEasing), initialAlpha = 0.7f)
                     .togetherWith(
-                        fadeOut(motion.tween(180, easing = FastOutSlowInEasing))
-                                + slideOutVertically(motion.tween(180, easing = FastOutSlowInEasing)) { -offsetY }
+                        fadeOut(motion.tween(160, easing = FastOutSlowInEasing))
+                                + slideOutVertically(motion.tween(160, easing = FastOutSlowInEasing)) { -offsetY }
                     )
             } else {
-                fadeIn(motion.tween(260, easing = FastOutSlowInEasing))
+                fadeIn(motion.tween(180, easing = FastOutSlowInEasing), initialAlpha = 0.7f)
                     .togetherWith(
-                        fadeOut(motion.tween(180, easing = FastOutSlowInEasing))
-                                + slideOutVertically(motion.tween(180, easing = FastOutSlowInEasing)) { offsetY }
+                        fadeOut(motion.tween(160, easing = FastOutSlowInEasing))
+                                + slideOutVertically(motion.tween(160, easing = FastOutSlowInEasing)) { offsetY }
                     )
             }.using(SizeTransform(clip = false))
         },
