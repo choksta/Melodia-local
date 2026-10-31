@@ -338,54 +338,27 @@ jobs:
           path: dist
           merge-multiple: true
 
-      # 按 commit message 的 conventional commits 前缀（feat/fix/refactor...）自己分类生成
+      # 两种来源，优先手写：
+      #   1. .github/release-notes/<tag>.md —— 想写「新增了什么功能」这种用户视角的说明时放一份
+      #   2. .github/scripts/gen_release_notes.py —— 没有手写稿就按 commit 自动生成
+      # 两种都会在最前面补 versionCode 标记：客户端靠它识别版本，
+      # 缺了这一行整条 release 会被更新检查直接忽略。
       - name: 生成分类日志
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
-          RANGE="HEAD"
-          [ -n "$PREV_TAG" ] && RANGE="$PREV_TAG..HEAD"
+          if [ -n "$PREV_TAG" ]; then RANGE="$PREV_TAG..HEAD"; else RANGE="HEAD"; fi
+          echo "changelog 范围：$RANGE"
 
-          declare -A TITLES=(
-            [feat]="✨ 新功能" [fix]="🐛 修复" [refactor]="♻️ 重构"
-            [perf]="⚡ 性能" [docs]="📝 文档" [test]="✅ 测试"
-            [build]="📦 构建" [ci]="🔧 CI" [chore]="🧹 杂项" [style]="🎨 样式"
-          )
-          ORDER=(feat fix refactor perf build docs test ci chore style)
-          declare -A BUCKETS
-          OTHER=""
+          MARKER="<!-- versionCode=${{ needs.version.outputs.code }} -->"
+          HANDWRITTEN=".github/release-notes/${GITHUB_REF_NAME}.md"
 
-          while IFS= read -r line; do
-            [ -z "$line" ] && continue
-            TYPE=$(echo "$line" | grep -oE '^[a-z]+' || true)
-            if [ -n "$TYPE" ] && [ -n "${TITLES[$TYPE]:-}" ]; then
-              BUCKETS[$TYPE]="${BUCKETS[$TYPE]:-}"$'\n'"- $line"
-            else
-              OTHER="$OTHER"$'\n'"- $line"
-            fi
-          done < <(git log "$RANGE" --no-merges --pretty=format:'%s')
-
-          {
-            # App 的更新检查靠这行 HTML 注释读 versionCode：tag 形如
-            # v2.1.0-beta.1-local29 无法用 semver 推导，客户端解析不到 code 就会
-            # **整条 release 被忽略**，表现同样是「检查更新说已是最新」。
-            # HTML 注释不会显示在发布页上。
-            echo "<!-- versionCode=${{ needs.version.outputs.code }} -->"
-            for t in "${ORDER[@]}"; do
-              if [ -n "${BUCKETS[$t]:-}" ]; then
-                echo "### ${TITLES[$t]}"
-                echo "${BUCKETS[$t]}"
-                echo ""
-              fi
-            done
-            if [ -n "$OTHER" ]; then
-              echo "### 📌 其他"
-              echo "$OTHER"
-              echo ""
-            fi
-            if [ -n "$PREV_TAG" ]; then
-              echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...${GITHUB_REF_NAME}"
-            fi
-          } > release-notes.md
+          if [ -f "$HANDWRITTEN" ]; then
+            echo "使用手写说明：$HANDWRITTEN"
+            { echo "$MARKER"; echo; cat "$HANDWRITTEN"; } > release-notes.md
+          else
+            echo "没有手写说明，按 commit 自动生成"
+            python3 .github/scripts/gen_release_notes.py               "$RANGE" "${{ needs.version.outputs.code }}" "$PREV_TAG" > release-notes.md
+          fi
 
           cat release-notes.md
 
