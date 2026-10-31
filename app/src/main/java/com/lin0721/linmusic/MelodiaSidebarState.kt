@@ -55,14 +55,21 @@ class MelodiaSidebarState(
      * 关闭后再导航，新页面出来时抽屉已经不在了，不存在残留。
      * 打开仍有 Material 原生滑入动画，收起时干脆利落，符合抽屉的一般手感。
      */
+    /**
+     * 跳转到新页面并收起侧栏。
+     *
+     * 顺序很关键：**先导航，再收起**。
+     *
+     * 反过来（先 snapTo 收起再导航）会「闪回主页」：侧栏瞬间消失的那一帧，
+     * 主页完整裸露出来，而新页面才刚开始从透明淡入（260ms）——
+     * 用户先看到一整屏主页，再看到新页面浮现，像是点了两次。
+     *
+     * 现在的顺序让两件事重叠：新页面开始入场的同时侧栏滑走。
+     * 侧栏滑出的 150ms 里新页面已经淡入过半，切换是连续的。
+     */
     fun closeThen(action: () -> Unit) {
-        // 同一协程内先关后跳：snapTo 是确定的状态变更（不是动画，不会被打断），
-        // 保证 currentValue 真的回到 Closed，否则 isOpen 停在 true 会让返回键
-        // 一直去「收抽屉」而不是「返回上一页」。
-        scope.launch {
-            drawerState.snapTo(DrawerValue.Closed)
-            action()
-        }
+        action()
+        scope.launch { drawerState.close() }
     }
 }
 
