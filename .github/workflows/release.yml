@@ -1,9 +1,10 @@
 name: Release
 
-# 推送 v1.2.3 或 v1.2.3-beta.1/-rc.1 形式的 tag 时触发：Android 与桌面端并行构建，
-# 两端都成功后才创建 GitHub Release，避免发出缺一端安装包的版本。
-# 预发布 tag 必须打在 dev 上，正式版 tag 必须打在 main 上，否则直接失败。
-# 手动运行为演练：按输入的版本号打两端安装包、作为 artifact 留存，不创建 Release
+# 推送 v1.2.3 / v1.2.3-beta.1 / v1.2.3-beta.1-local28 形式的 tag 时触发：
+# 用 secrets 里的正式签名构建 APK，成功后才创建 GitHub Release。
+# -localN 是本仓库的构建序号，只影响版本名与文件名，不参与 versionCode。
+# 预发布 tag 允许打在 main 或 dev，正式版 tag 必须打在 main 上，否则直接失败。
+# 手动运行为演练：按输入的版本号打包、作为 artifact 留存，不创建 Release
 on:
   push:
     tags:
@@ -39,21 +40,25 @@ jobs:
           DRY_RUN_VERSION: ${{ github.event.inputs.version }}
         run: |
           TAG_NAME=${DRY_RUN_VERSION:-${GITHUB_REF_NAME#v}}
-          BASE_VERSION=${TAG_NAME%%-*}
+          # -localN 是本仓库自己的构建序号（如 v2.1.0-beta.1-local28），只用来区分多次构建，
+          # 不参与版本号计算：剥掉后再解析。name 仍输出带后缀的完整版本，APK 文件名也带它，
+          # 这样同一个 beta.1 可以反复发构建而不必为了 versionCode 去改版本号
+          SEMVER_TAG=$(printf '%s' "$TAG_NAME" | sed -E 's/-local[0-9]+$//')
+          BASE_VERSION=${SEMVER_TAG%%-*}
           IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
           if ! [[ "$MAJOR" =~ ^[0-9]+$ && "$MINOR" =~ ^[0-9]+$ && "$PATCH" =~ ^[0-9]+$ ]]; then
-            echo "tag 格式不是 vMAJOR.MINOR.PATCH[-beta.N|-rc.N]：$TAG_NAME" >&2
+            echo "tag 格式不是 vMAJOR.MINOR.PATCH[-beta.N|-rc.N][-localN]：$TAG_NAME" >&2
             exit 1
           fi
 
           # 预发布 tag 用 v1.2.3-beta.1 / v1.2.3-rc.1 形式，同一版本号下 beta < rc < 正式版，
           # 保证 versionCode 严格递增，覆盖安装不会被系统当成降级拒绝
-          if [ "$TAG_NAME" = "$BASE_VERSION" ]; then
+          if [ "$SEMVER_TAG" = "$BASE_VERSION" ]; then
             PRERELEASE=false
             SUB_CODE=99
           else
             PRERELEASE=true
-            SUFFIX=${TAG_NAME#"$BASE_VERSION"-}
+            SUFFIX=${SEMVER_TAG#"$BASE_VERSION"-}
             KIND=${SUFFIX%%.*}
             NUM=${SUFFIX#*.}
             if ! [[ "$NUM" =~ ^[0-9]+$ ]]; then
@@ -93,17 +98,33 @@ jobs:
         env:
           PRERELEASE: ${{ steps.version.outputs.prerelease }}
         run: |
-          if [ "$PRERELEASE" = "true" ]; then
-            BRANCH=dev
-          else
-            BRANCH=main
+          # 远端分支引用不一定随 checkout 落地；拿不到就不拦，避免一个环境差异卡住发版
+          if ! git rev-parse --verify --quiet origin/main >/dev/null; then
+            echo "警告：本地没有 origin/main 引用，跳过分支校验" >&2
+            exit 0
           fi
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/$BRANCH"; then
-            echo "tag $GITHUB_REF_NAME 指向的提交 $GITHUB_SHA 不在 $BRANCH 分支上，预发布需打在 dev、正式版需打在 main" >&2
+
+          if [ "$PRERELEASE" = "true" ]; then
+            # 预发布在本仓库允许打在 main 上：单人维护，没有 dev 流转
+            for BRANCH in main dev; do
+              if git rev-parse --verify --quiet "origin/$BRANCH" >/dev/null &&
+                git merge-base --is-ancestor "$GITHUB_SHA" "origin/$BRANCH"; then
+                echo "tag $GITHUB_REF_NAME 位于 $BRANCH 分支"
+                exit 0
+              fi
+            done
+            echo "tag $GITHUB_REF_NAME 指向的提交 $GITHUB_SHA 既不在 main 也不在 dev 上" >&2
             exit 1
           fi
-          echo "tag $GITHUB_REF_NAME 位于 $BRANCH 分支"
 
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "正式版 tag 必须打在 main 上：$GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          echo "tag $GITHUB_REF_NAME 位于 main 分支"
+
+  # 本仓库只分发 Android（README 的 Platform 一节已去掉 Windows），
+  # 桌面端打包已从发版流程移除；需要时从 git 历史取回 desktop job
   android:
     needs: version
     runs-on: ubuntu-latest
@@ -164,52 +185,8 @@ jobs:
           path: app/build/outputs/apk/release/Melodia-v${{ needs.version.outputs.name }}-release.apk
           retention-days: 7
 
-  # windows-latest 自带 CMake、VS 2022（编 SMTC 桥接 DLL 与安装/卸载程序）与 WiX 3（打内嵌的 MSI）
-  desktop:
-    needs: version
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: bash
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: 配置 JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: 配置 Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      # libmpv 按 gradle.properties 固定的 Release 下载并校验 SHA256；SMTC 编不出来直接失败
-      - name: 桌面端打包
-        run: |
-          ./gradlew :desktopApp:packageReleaseZip :desktopApp:packageReleaseSetup \
-            -PreleaseVersionName=${{ needs.version.outputs.name }} \
-            -PrequireSmtc=true \
-            -PrequireUninstaller=true \
-            --no-daemon
-
-      - name: 整理安装包
-        run: |
-          OUT=desktopApp/build/compose/binaries/main-release
-          mkdir -p dist
-          cp "$OUT/zip/Melodia-v${{ needs.version.outputs.name }}-windows-x64.zip" dist/
-          cp "$OUT/setup/Melodia-v${{ needs.version.outputs.name }}-windows-x64-setup.exe" dist/
-          ls -l dist
-
-      - name: 上传桌面端安装包
-        uses: actions/upload-artifact@v4
-        with:
-          name: desktop
-          path: dist/*
-          retention-days: 7
-
   publish:
-    needs: [version, android, desktop]
+    needs: [version, android]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
 
@@ -264,11 +241,6 @@ jobs:
               echo "$OTHER"
               echo ""
             fi
-            echo "### 💻 桌面端安装说明"
-            echo "- Windows 10 及以上 64 位系统，提供安装程序（setup.exe）与免安装 zip"
-            echo "- 安装程序支持静默安装：\`setup.exe /S [/allusers] [/nodesktop] [/autostart] [/run] [/D=安装目录]\`"
-            echo "- 安装包暂未做代码签名，首次运行若出现 SmartScreen 提示，点击「更多信息」→「仍要运行」即可"
-            echo ""
             if [ -n "$PREV_TAG" ]; then
               echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...${GITHUB_REF_NAME}"
             fi
