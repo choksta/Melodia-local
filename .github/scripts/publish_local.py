@@ -152,23 +152,21 @@ def main():
         raise SystemExit("tag 必须以 -localN 结尾，否则 versionCode 无法计算")
     n = int(match.group(1))
     version_code = VERSION_CODE_BASE + n
-    print(f"tag={tag}  versionCode={version_code}")
+    # build.gradle 用 archivesName = "Melodia-v${versionName}"，而 versionName 不含前导 v，
+    # 所以产物是 Melodia-v2.1.0-...-release.apk，不是 Melodia-vv2.1.0-...
+    version_name = tag[1:] if tag.startswith("v") else tag
+    print(f"tag={tag}  versionName={version_name}  versionCode={version_code}")
 
     # 1. 工作区必须干净：否则构建的是未提交的代码，push 上去的是旧的
     dirty = git("status", "--porcelain")
     if dirty:
         raise SystemExit("工作区有未提交改动，先提交再发版：\n" + dirty)
 
-    already = git("tag", "--list", tag)
-    if not already:
-        git("tag", tag)
-        print(f"  已创建本地 tag {tag}")
-
     began = time.time()
 
     # 2. 构建
     apk = os.path.join(
-        REPO, "app", "build", "outputs", "apk", "release", f"Melodia-v{tag}-release.apk"
+        REPO, "app", "build", "outputs", "apk", "release", f"Melodia-v{version_name}-release.apk"
     )
     if args.skip_build:
         print("  跳过构建，复用已有产物")
@@ -177,7 +175,7 @@ def main():
         gradlew = ["cmd", "/c", "gradlew.bat"] if os.name == "nt" else ["./gradlew"]
         result = run(gradlew + [
             ":app:assembleRelease",
-            f"-PreleaseVersionName={tag}",
+            f"-PreleaseVersionName={version_name}",
             f"-PreleaseVersionCode={version_code}",
             "--console=plain",
         ], check=False)
