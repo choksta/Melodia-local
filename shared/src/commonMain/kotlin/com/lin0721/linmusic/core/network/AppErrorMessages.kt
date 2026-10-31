@@ -6,7 +6,9 @@ fun AppError.toMessage(resourceProvider: ResourceProvider): String = when (this)
     AppError.RiskControl -> resourceProvider.getString(AppString.ErrorRiskControl)
     AppError.Unauthorized -> resourceProvider.getString(AppString.ErrorUnauthorized)
     AppError.ParseError -> resourceProvider.getString(AppString.ErrorParse)
-    is AppError.BizError -> resourceProvider.getString(AppString.ErrorBizDefault)
+    // 有可读原因时优先展示（如「该歌曲需要 VIP 或版权受限」），否则才退回收兜底文案
+    is AppError.BizError -> rawMsg?.takeIf { it.isNotBlank() }
+        ?: resourceProvider.getString(AppString.ErrorBizDefault)
 }
 
 // 统一取错误提示：Repository 出口应始终是 AppError，非 AppError 兜底走原始 message

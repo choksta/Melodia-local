@@ -52,6 +52,10 @@ class PlaybackRepositoryImpl(
         // 该歌曲可能需要开启 VIP 或版权受限：code=200 但 url 为空，也算失败
         isSuccess = { it.isSuccess && !it.data.firstOrNull()?.url.isNullOrBlank() },
         code = { it.code },
+        // 业务码是 200 却没有直链时补一句可读原因，否则错误对象只能反映 code=200，界面上看不出为什么放不了
+        msg = { response ->
+            if (response.isSuccess) "该歌曲需要 VIP 或版权受限" else null
+        },
         transform = { response ->
             val item = response.data.first()
             SongPlaybackInfo(

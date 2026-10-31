@@ -49,6 +49,11 @@ android {
         versionName = (project.findProperty("releaseVersionName") as String?) ?: "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // 只保留真机架构：x86/x86_64 仅模拟器需要，却让每个 APK 多带约 2MB 的 libtaglib.so
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     signingConfigs {
@@ -67,6 +72,8 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            // R8 只处理代码，未引用的资源仍需 shrinker 清理（依赖库自带大量用不到的 drawable/布局）
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
