@@ -1,67 +1,80 @@
 package com.lin0721.linmusic
 
-import androidx.compose.material3.DrawerState
-import androidx.compose.material3.DrawerValue
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /**
- * 侧边栏状态：一层薄包装，内部用 Material3 的 [DrawerState]。
+ * 侧边栏开合状态。
  *
- * 之前是自己拿 AnchoredDraggableState + translationX 手写的抽屉，问题出在
- * 「主内容层平移让出位置」这个模式对命中测试不友好——面板露出来了，点击却仍
- * 被主内容层吃掉；调布局偏移、调 zIndex 都只能碰运气。
+ * ## 为什么不用 Material3 的 DrawerState
  *
- * 换成 ModalNavigationDrawer 之后，面板是独立的 drawerContent 槽，命中关系由
- * 官方实现保证；边缘手势、遮罩点击关闭、开合动画都是内置的。
+ * 用过两轮，问题都出在「面板位移」：
+ * - `open()` 是滑入动画，300ms 里面板位置一直在变。用户看到面板露头就去点，
+ *   那一瞬点击落在遮罩上，抽屉反而被关掉——表现就是「点了没反应还消失了」；
+ * - `snapTo()` 能秒点，但「啪」一下出现，没有过渡；
+ * - 想两头兼顾就得在 `confirmStateChange` 里拦关闭请求，一拦就容易把状态卡在
+ *   Open，接着返回键只会去「收抽屉」，返回失灵。
+ *
+ * 现在的思路和设置页子菜单切换一致（见 SettingsScreen 的 AnimatedContent）：
+ * **新内容原地淡入、只让旧内容位移**。侧栏位置永远钉死在 [0, SidebarWidth]，
+ * 由 alpha 承担浮现，主内容向右滑开承担「推开」的观感。
+ *
+ * 位置不动，视觉位置就等于命中区域，任何时刻点都准——这是秒响应的唯一解。
  */
 @Stable
-class MelodiaSidebarState(
-    private val scope: CoroutineScope,
-    val drawerState: DrawerState
-) {
+class MelodiaSidebarState(private val scope: CoroutineScope) {
 
-    val isOpen: Boolean get() = drawerState.currentValue == DrawerValue.Open
+    /** 0 = 完全关闭，1 = 完全展开。只驱动透明度与主内容位移，不驱动侧栏自身位置。 */
+    private val anim = Animatable(0f)
 
-    /**
-     * 瞬时到位，不做滑入。
-     *
-     * 滑入动画的 300ms 里面板位置一直在变，用户看到一点就去点，那个位置此刻还是
-     * 遮罩——「打开后不能秒交互」就是这么来的。位置固定之后，看到多少点多少。
-     * 过渡感不靠位移，而由两件事承担：面板自身淡入 + 主内容轻微后退（见 MelodiaApp）。
-     */
+    val progress: Float get() = anim.value
+
+    var isOpen by mutableStateOf(false)
+        private set
+
     fun open() {
-        scope.launch { drawerState.snapTo(DrawerValue.Open) }
+        isOpen = true
+        animateTo(1f)
     }
 
     fun close() {
-        scope.launch { drawerState.close() }
+        isOpen = false
+        animateTo(0f)
     }
 
     /**
-     * 关闭抽屉并立刻执行 [action]。
+     * 收起并立即执行 [action]（通常是页面跳转）。
      *
-     * 曾经试过「等关闭动画走完再跳」：`drawerState.close()` 之后调 action。
-     * 但 close 的动画会被手势取消（点击的 UP 事件被 anchoredDraggable 当成拖动结束），
-     * animateTo 抛 CancellationException，协程结束、action 轮不到执行；
-     * 更糟的是状态可能停在不确定的位置，`isOpen` 仍为 true——
-     * 之后按返回键会一直去「收抽屉」而不是「返回上一页」，返回就彻底失灵了。
-     *
-     * 所以改成瞬时关闭：snapTo 是确定的状态变更，不会被打断、也不会留下半开状态；
-     * 关闭后再导航，新页面出来时抽屉已经不在了，不存在残留。
-     * 打开仍有 Material 原生滑入动画，收起时干脆利落，符合抽屉的一般手感。
+     * 用 [Animatable.snapTo] 瞬间归零，而不是等 200ms 淡出：否则新页面已经渲染出来，
+     * 侧栏还在慢慢消失，那 200ms 就是用户看到的画面残留。
+     * 也不采用「等关完再跳」——那会把跳转本身拖慢半拍，点菜单像没反应。
      */
     fun closeThen(action: () -> Unit) {
-        // 同一协程内先关后跳：snapTo 是确定的状态变更（不是动画，不会被打断），
-        // 保证 currentValue 真的回到 Closed，否则 isOpen 停在 true 会让返回键
-        // 一直去「收抽屉」而不是「返回上一页」。
+        isOpen = false
         scope.launch {
-            drawerState.snapTo(DrawerValue.Closed)
+            runCatching { anim.snapTo(0f) }
             action()
+        }
+    }
+
+    private fun animateTo(target: Float) {
+        scope.launch {
+            try {
+                anim.animateTo(target, tween(200, easing = FastOutSlowInEasing))
+            } catch (_: CancellationException) {
+                // 快速连开连关时前一段动画会被新的打断，属正常行为
+            }
         }
     }
 }
@@ -69,23 +82,5 @@ class MelodiaSidebarState(
 @Composable
 fun rememberMelodiaSidebarState(): MelodiaSidebarState {
     val scope = rememberCoroutineScope()
-    val drawerState = remember {
-        // 用数组持有自身引用，供 confirmStateChange 判断「是否正滑到一半」
-        val holder = arrayOfNulls<DrawerState>(1)
-        DrawerState(DrawerValue.Closed) { target ->
-            // 只在「正从关闭滑向打开」这段里忽略关闭请求。
-            //
-            // 面板滑入的这 300ms 里，用户看到一点就会去点，而那个位置此刻还是遮罩；
-            // 若照单全收，抽屉会「刚打开又自己关上」，表现就是「点不了还消失了」。
-            //
-            // 条件必须收得很窄：一旦写成「currentValue != targetValue」，
-            // 打开动画刚结束的临界点上仍然成立，此时连程序发起的关闭都会被拒绝，
-            // 抽屉状态就卡在 Open —— 紧接着返回键会一直去「收抽屉」，返回彻底失灵。
-            val opening = holder[0]?.let {
-                it.targetValue == DrawerValue.Open && it.currentValue == DrawerValue.Closed
-            } ?: false
-            !(target == DrawerValue.Closed && opening)
-        }.also { holder[0] = it }
-    }
-    return remember(scope, drawerState) { MelodiaSidebarState(scope, drawerState) }
+    return remember(scope) { MelodiaSidebarState(scope) }
 }

@@ -34,8 +34,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -57,7 +55,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -392,106 +389,39 @@ fun MelodiaApp() {
     }
 
     // 面板停靠左侧时左边缘被面板占住，边缘拉出侧边栏会和面板内的拖动手势冲突
-    val isEdgeSwipeBlocked = usePanel && isPanelAtStart && isPanelShown
 
     CompositionLocalProvider(
         LocalMelodiaWindowSizeClass provides windowSizeClass,
         LocalMelodiaOrientationClass provides orientationClass,
         LocalMelodiaPlayerPanelAtStart provides isPanelAtStart
     ) {
+    // 侧栏进度由 MelodiaSidebarState 的 Animatable 提供（0 → 1，200ms）。
+    // 放在状态里而不是这里 animateFloatAsState，是为了点菜单项时能 snapTo 瞬间归零，
+    // 不留「新页面已出、侧栏还在淡出」的残留。
+    val slideProgress = sidebar.progress
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .onSizeChanged { playerSheet.onScreenSizeChanged(it.height.toFloat()) }
             .background(MelodiaColors.Background)
     ) {
-        // 侧边栏改用 Material3 的 ModalNavigationDrawer 承载。
+        // 2. 主页面内容层
         //
-        // 原来是自己拿 AnchoredDraggableState + 平移手写的抽屉：主内容层平移让出位置，
-        // 面板露出来了但点击仍被主内容层吃掉，调布局偏移、调 zIndex 都没根治。
-        // 现在面板是独立的 drawerContent 槽，命中关系由官方实现保证；
-        // 边缘手势、遮罩点击关闭、开合动画全部内置。
-        // 视觉上从「内容被推开」变为「面板盖上来 + 遮罩变暗」。
-        ModalNavigationDrawer(
-            drawerState = sidebar.drawerState,
-            gesturesEnabled = userProfile != null && !isEdgeSwipeBlocked,
-            scrimColor = Color.Transparent,
-            drawerContent = {
-                // 自己接管面板位置与遮罩，不用框架的 spring（StiffnessMediumLow，
-                // 滑完要 400ms+，用户等不起）。
-                // - 面板位置由 offset 驱动：命中区域跟着一起移动，露出多少点多少
-                // - 时长压到 150ms：推入推出的过程还在，但不拖沓
-                // - 遮罩在滑动期间不接收点击：否则点早了会把刚开的抽屉关掉，
-                //   表现就是「点了还消失了」
-                val slide by animateFloatAsState(
-                    targetValue = if (sidebar.isOpen) 1f else 0f,
-                    animationSpec = tween(150, easing = FastOutSlowInEasing),
-                    label = "sidebar_slide"
-                )
-                val drawerWidthPx = with(density) { SidebarWidth.toPx() }
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.45f * slide))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                enabled = slide > 0.99f
-                            ) { sidebar.close() }
-                    )
-                    Box(
-                        modifier = Modifier
-                            .width(SidebarWidth)
-                            .fillMaxHeight()
-                            .offset { IntOffset((-(1f - slide) * drawerWidthPx).roundToInt(), 0) }
-                    ) {
-                        ModalDrawerSheet(
-                            modifier = Modifier
-                                .width(SidebarWidth)
-                                .fillMaxHeight(),
-                            drawerShape = RectangleShape,
-                            drawerContainerColor = MelodiaColors.Background
-                        ) {
-                            userProfile?.let { profile ->
-                                ProfileSidebar(
-                                    userProfile = profile,
-                                    onLogout = {
-                                        viewModel.logout()
-                                        sidebar.close()
-                                    },
-                                    onNavigateToProfile = { uid -> sidebar.closeThen { navigation.openProfile(uid) } },
-                                    onNavigateToRecentPlay = { sidebar.closeThen { navigation.openRecentPlay() } },
-                                    onNavigateToListenData = { sidebar.closeThen { navigation.openListenData() } },
-                                    onNavigateToCloud = { sidebar.closeThen { navigation.openCloud() } },
-                                    onNavigateToDownloads = { sidebar.closeThen { navigation.openDownloads() } },
-                                    onNavigateToMessage = { sidebar.closeThen { navigation.openMessage() } },
-                                    onNavigateToSettings = { sidebar.closeThen { navigation.navigateTo(Screen.Settings) } },
-                                    isDarkTheme = isDarkTheme,
-                                    onToggleTheme = { sidebar.closeThen(onToggleTheme) }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        ) {
-
-        // 2. 主页面内容层（不再平移，侧边栏是盖在上面的独立浮层）
-        // 侧栏的「层次感」由这里承担：抽屉打开时主内容轻微后退并压暗，
-        // 视觉上像被推开一点，但主内容本身不参与命中（遮罩在它上面），所以安全
-        val contentRecede by animateFloatAsState(
-            targetValue = if (sidebar.isOpen) 1f else 0f,
-            animationSpec = tween(220, easing = FastOutSlowInEasing),
-            label = "content_recede"
-        )
+        //    侧栏开合统一由 slideProgress 驱动（0 = 关闭，1 = 完全展开），
+        //    200ms 缓动：推入推出的过程在，但不拖沓。
+        //    位移用 Modifier.offset（布局偏移）而不是 graphicsLayer.translationX——
+        //    前者命中区域跟着一起移动，主内容滑开后它原来的位置才真正让给侧栏。
+        val sidebarWidthPx = with(density) { SidebarWidth.toPx() }
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .offset { IntOffset((slideProgress * sidebarWidthPx).roundToInt(), 0) }
                 .graphicsLayer {
-                    val s = 1f - 0.04f * contentRecede
-                    scaleX = s
-                    scaleY = s
+                    // 被推开时切成圆角卡片，层次感来自这里
+                    clip = true
+                    shape = RoundedCornerShape((slideProgress * 28).dp)
+                    shadowElevation = slideProgress * 24f
                 }
                 .onSizeChanged { contentLayerWidth = with(density) { it.width.toDp() } }
                 .background(if (isPanelDocked) MelodiaColors.WindowBackground else MelodiaColors.Background)
@@ -717,6 +647,51 @@ fun MelodiaApp() {
                 }
             }
         }
+
+        // 3. 侧栏打开后，点主内容区域即关闭（标准抽屉行为）。
+        //    必须在侧栏之下、主内容之上：压在主内容上挡住误触，又在侧栏下面不抢它的点击。
+        if (slideProgress > 0.001f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { sidebar.close() }
+            )
+        }
+
+        // 4. 侧边栏：位置钉死在 [0, SidebarWidth]，只淡入、不做任何位移。
+        //
+        //    这是「动画期间也能秒点」的唯一解——位置固定，看到哪里就是命中哪里。
+        //    与设置页子菜单切换同一套思路（SettingsScreen 的 AnimatedContent）：
+        //    新内容原地淡入，位移交给旧内容。此处「新内容」是侧栏，「旧内容」是主内容，
+        //    主内容向右滑开承担推入推出的观感。
+        val sidebarProfile = userProfile
+        if (sidebarProfile != null && slideProgress > 0.001f) {
+            Box(
+                modifier = Modifier
+                    .width(SidebarWidth)
+                    .fillMaxHeight()
+                    .graphicsLayer { alpha = slideProgress }
+            ) {
+                ProfileSidebar(
+                    userProfile = sidebarProfile,
+                    onLogout = {
+                        viewModel.logout()
+                        sidebar.close()
+                    },
+                    onNavigateToProfile = { uid -> sidebar.closeThen { navigation.openProfile(uid) } },
+                    onNavigateToRecentPlay = { sidebar.closeThen { navigation.openRecentPlay() } },
+                    onNavigateToListenData = { sidebar.closeThen { navigation.openListenData() } },
+                    onNavigateToCloud = { sidebar.closeThen { navigation.openCloud() } },
+                    onNavigateToDownloads = { sidebar.closeThen { navigation.openDownloads() } },
+                    onNavigateToMessage = { sidebar.closeThen { navigation.openMessage() } },
+                    onNavigateToSettings = { sidebar.closeThen { navigation.navigateTo(Screen.Settings) } },
+                    isDarkTheme = isDarkTheme,
+                    onToggleTheme = { sidebar.closeThen(onToggleTheme) }
+                )
+            }
         }
 
         MelodiaFullPlayerOverlay(
