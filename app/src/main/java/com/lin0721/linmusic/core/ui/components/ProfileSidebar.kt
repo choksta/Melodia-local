@@ -39,7 +39,6 @@ import com.lin0721.linmusic.core.ui.theme.PillRadiusLarge
 fun ProfileSidebar(
     userProfile: UserProfile,
     onLogout: () -> Unit,
-    onDismiss: () -> Unit,
     onNavigateToProfile: (uid: Long) -> Unit,
     onNavigateToRecentPlay: () -> Unit,
     onNavigateToListenData: () -> Unit,
@@ -115,38 +114,38 @@ fun ProfileSidebar(
             SidebarMenuItem(
                 icon = Icons.Outlined.History,
                 title = "最近播放",
-                onClick = { onDismiss(); onNavigateToRecentPlay() }
+                onClick = { onNavigateToRecentPlay() }
             )
             SidebarMenuItem(
                 icon = Icons.Outlined.Insights,
                 title = "听歌数据",
-                onClick = { onDismiss(); onNavigateToListenData() }
+                onClick = { onNavigateToListenData() }
             )
             SidebarMenuItem(
                 icon = Icons.Outlined.CloudQueue,
                 title = "我的云盘",
-                onClick = { onDismiss(); onNavigateToCloud() }
+                onClick = { onNavigateToCloud() }
             )
             SidebarMenuItem(
                 icon = Icons.Outlined.FileDownload,
                 title = "下载管理",
-                onClick = { onDismiss(); onNavigateToDownloads() }
+                onClick = { onNavigateToDownloads() }
             )
             SidebarMenuItem(
                 icon = Icons.Outlined.Notifications,
                 title = "消息",
-                onClick = { onDismiss(); onNavigateToMessage() }
+                onClick = { onNavigateToMessage() }
             )
             SidebarMenuItem(
                 // 展示的是「切过去之后」的目标形态：当前深色显示太阳→浅色，反之显示月亮→深色
                 icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
                 title = if (isDarkTheme) "切换到浅色模式" else "切换到深色模式",
-                onClick = { onDismiss(); onToggleTheme() }
+                onClick = { onToggleTheme() }
             )
             SidebarMenuItem(
                 icon = Icons.Outlined.Settings,
                 title = "设置和隐私",
-                onClick = { onDismiss(); onNavigateToSettings() }
+                onClick = { onNavigateToSettings() }
             )
         }
 

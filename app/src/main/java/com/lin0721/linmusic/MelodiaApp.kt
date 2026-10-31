@@ -414,19 +414,10 @@ fun MelodiaApp() {
             gesturesEnabled = userProfile != null && !isEdgeSwipeBlocked,
             scrimColor = Color.Black.copy(alpha = 0.45f),
             drawerContent = {
-                // 面板瞬时到位（见 MelodiaSidebarState.open 的 snapTo），
-                // 过渡感靠这层淡入补：180ms 从透明到不透明，位置始终固定，
-                // 所以淡入过程中点半透明的菜单项也是准确的
-                val drawerAlpha by animateFloatAsState(
-                    targetValue = if (sidebar.isOpen) 1f else 0f,
-                    animationSpec = tween(180),
-                    label = "drawer_alpha"
-                )
                 ModalDrawerSheet(
                     modifier = Modifier
                         .width(SidebarWidth)
-                        .fillMaxHeight()
-                        .graphicsLayer { alpha = drawerAlpha },
+                        .fillMaxHeight(),
                     drawerShape = RectangleShape,
                     drawerContainerColor = MelodiaColors.Background
                 ) {
@@ -437,19 +428,17 @@ fun MelodiaApp() {
                                 viewModel.logout()
                                 sidebar.close()
                             },
-                            onDismiss = { sidebar.close() },
-                            onNavigateToProfile = { uid ->
-                                sidebar.close()
-                                navigation.openProfile(uid)
-                            },
-                            onNavigateToRecentPlay = { navigation.openRecentPlay() },
-                            onNavigateToListenData = { navigation.openListenData() },
-                            onNavigateToCloud = { navigation.openCloud() },
-                            onNavigateToDownloads = { navigation.openDownloads() },
-                            onNavigateToMessage = { navigation.openMessage() },
-                            onNavigateToSettings = { navigation.navigateTo(Screen.Settings) },
+                            // 全部走 closeThen：等抽屉收完再跳，避免新页面先出来、
+                            // 侧栏还在滑出导致画面残留
+                            onNavigateToProfile = { uid -> sidebar.closeThen { navigation.openProfile(uid) } },
+                            onNavigateToRecentPlay = { sidebar.closeThen { navigation.openRecentPlay() } },
+                            onNavigateToListenData = { sidebar.closeThen { navigation.openListenData() } },
+                            onNavigateToCloud = { sidebar.closeThen { navigation.openCloud() } },
+                            onNavigateToDownloads = { sidebar.closeThen { navigation.openDownloads() } },
+                            onNavigateToMessage = { sidebar.closeThen { navigation.openMessage() } },
+                            onNavigateToSettings = { sidebar.closeThen { navigation.navigateTo(Screen.Settings) } },
                             isDarkTheme = isDarkTheme,
-                            onToggleTheme = onToggleTheme
+                            onToggleTheme = { sidebar.closeThen(onToggleTheme) }
                         )
                     }
                 }
