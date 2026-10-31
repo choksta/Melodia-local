@@ -271,8 +271,11 @@ jobs:
 
           # 判据是「签名指纹是否等于预期」，而不是「DN 里有没有 Android Debug」。
           # 比指纹才能同时做到：防配错 keystore + 不因签名身份叫什么名字而误判。
-          # 换签名时这里要跟着改（本地可用 keytool -list -v 拿到）。
-          EXPECTED_SHA256="EF:B5:3A:61:8A:EF:37:9C:20:47:18:E8:F9:35:CE:A1:6E:FB:1E:EF:2D:98:7A:81:83:77:5B:FB:58:04:19:35"
+          #
+          # 这里刻意用本机 ~/.android/debug.keystore：GitHub 上的 local1~local5
+          # 和用户手机上装的版本都是它（指纹 0D:32:1B:9D:...，已实测比对），
+          # 用同一把钥匙，新包才能直接覆盖安装而不必卸载。换签名时这里要跟着改。
+          EXPECTED_SHA256="0D:32:1B:9D:A9:99:04:08:58:8E:3D:A5:B2:1E:E8:F1:DE:B4:3E:11:96:A2:44:3E:F5:D6:1A:30:09:2E:00:7C"
           normalize() { printf '%s' "$1" | tr -d ':' | tr 'A-Z' 'a-z' | tr -d '[:space:]'; }
           ACTUAL_SHA256=$(echo "$CERTS" | grep -i "SHA-256 digest" | head -1 | sed 's/.*digest: *//')
           if [ -z "$ACTUAL_SHA256" ]; then
