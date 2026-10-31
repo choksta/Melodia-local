@@ -32,6 +32,30 @@ jobs:
       - name: 单元测试
         run: ./gradlew :app:testDebugUnitTest :shared:desktopTest :desktopApp:test --no-daemon
 
+      # 测试失败时把失败用例连同断言信息转成 annotation。
+      # 下载 job 日志要 token，而 check-run 注解是公开可读的——不登录也能看到是哪条用例挂了。
+      - name: 汇总失败用例
+        if: failure()
+        run: |
+          cat > /tmp/report_failures.py <<'PY'
+          import glob
+          import re
+
+          found = 0
+          for path in glob.glob('**/build/test-results/**/*.xml', recursive=True):
+              text = open(path, encoding='utf-8', errors='replace').read()
+              pattern = (r'<testcase name="([^"]*)" classname="([^"]*)"[^>]*>'
+                         r'\s*<failure[^>]*message="([^"]{0,240})')
+              for match in re.finditer(pattern, text):
+                  found += 1
+                  message = ' '.join(match.group(3).split())
+                  print(f"::error title={match.group(2)}::{match.group(1)} — {message}")
+          if found == 0:
+              print('::error::测试报告里没有失败用例，失败可能发生在编译或环境准备阶段')
+          print(f'共 {found} 条失败用例')
+          PY
+          python3 /tmp/report_failures.py
+
       # 桌面端只做编译检查，安装包在发版时由 Windows runner 打
       - name: 桌面端编译
         run: ./gradlew :desktopApp:compileKotlin --no-daemon
