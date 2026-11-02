@@ -1,7 +1,11 @@
 name: Release
 
-# 推送 v1.2.3 / v1.2.3-beta.1 / v1.2.3-beta.1-local28 形式的 tag 时触发：
+# 推送 v1.2.3（推荐）/ 1.2.3 / v1.2.3-beta.1 形式的 tag 时触发：
 # 用 secrets 里的签名构建 APK，成功后才创建 GitHub Release。
+#
+# 发版就一句（v 有没有都行，纯版本号最直观）：
+#   git tag v2.1.55 && git push mine-ssh v2.1.55
+# 旧的 v2.1.0-beta.1-local28 形式仍然兼容，但不再使用。
 #
 # ⚠️ 签名策略（改动前务必读完，否则会让所有已安装的用户无法覆盖升级）
 # ---------------------------------------------------------------------------
@@ -15,10 +19,12 @@ name: Release
 # 不会静默发出一个装不上的包。换签名时那一步和 secrets 都必须同步改，
 # 并且要接受「所有已安装用户必须卸载重装」的代价。
 #
-# -localN 参与 versionCode（20512 + N），App 的更新检查靠比较 versionCode 判断更新；
-# 若不让它参与，同一个 beta.1 反复发版时 code 永远不变，客户端会一直认为已是最新。
-# Release 正文里的 <!-- versionCode=N --> 标记同样是必需的，客户端解析 tag 时
-# 会跳过含 -local 的，只认这个标记。
+# versionCode 有两条来源，都在「从 tag 解析版本号」里：
+#   - 纯版本号 tag（v2.1.55）按 semver 编码：(MAJOR*10000 + MINOR*100 + PATCH)*100 + 99，
+#     所以 MINOR / PATCH 都必须 < 100，超过会编码冲突（有校验拦着）
+#   - 旧的 -localN 形式按 20512 + N，保留只为兼容历史 tag
+# 客户端优先读 Release 正文的 <!-- versionCode=N --> 标记，tag 只影响显示，
+# 所以 tag 换成纯版本号不会让更新检查失灵；但标记绝不能缺，缺了整条 release 会被忽略。
 #
 # 预发布 tag 允许打在 main 或 dev，正式版 tag 必须打在 main 上，否则直接失败。
 # 手动运行为演练：按输入的版本号打包、作为 artifact 留存，不创建 Release
@@ -26,6 +32,8 @@ on:
   push:
     tags:
       - 'v*.*.*'
+      # 允许不带 v 的纯版本号（2.1.55）
+      - '[0-9]*.[0-9]*.[0-9]*'
   workflow_dispatch:
     inputs:
       version:
@@ -67,6 +75,12 @@ jobs:
           IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
           if ! [[ "$MAJOR" =~ ^[0-9]+$ && "$MINOR" =~ ^[0-9]+$ && "$PATCH" =~ ^[0-9]+$ ]]; then
             echo "tag 格式不是 vMAJOR.MINOR.PATCH[-beta.N|-rc.N][-localN]：$TAG_NAME" >&2
+            exit 1
+          fi
+          # versionCode 把 MINOR/PATCH 各按两位数编码，三位数会与下一个 MINOR 撞号
+          # （2.1.100 和 2.2.0 会算出同一个 code，覆盖安装就变成降级被拒）
+          if [ "$MINOR" -gt 99 ] || [ "$PATCH" -gt 99 ]; then
+            echo "MINOR / PATCH 必须小于 100（versionCode 编码空间）：$TAG_NAME" >&2
             exit 1
           fi
 
