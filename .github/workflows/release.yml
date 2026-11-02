@@ -344,6 +344,7 @@ jobs:
       # 两种都会在最前面补 versionCode 标记：客户端靠它识别版本，
       # 缺了这一行整条 release 会被更新检查直接忽略。
       - name: 生成分类日志
+        id: notes
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
           if [ -n "$PREV_TAG" ]; then RANGE="$PREV_TAG..HEAD"; else RANGE="HEAD"; fi
@@ -362,11 +363,24 @@ jobs:
 
           cat release-notes.md
 
+          # Release 标题不用完整 tag：v2.1.0-beta.1-local53 在列表里太长且被截断，
+          # 而 localN 本身就是唯一的构建序号。tag 名保持不变——workflow 靠它解析
+          # versionCode，客户端也靠它区分版本，只有展示标题需要短。
+          LOCAL_SEQ=$(printf '%s' "$GITHUB_REF_NAME" | sed -nE 's/.*-local([0-9]+)$/\1/p')
+          if [ -n "$LOCAL_SEQ" ]; then
+            RELEASE_TITLE="local$LOCAL_SEQ"
+          else
+            RELEASE_TITLE="$GITHUB_REF_NAME"
+          fi
+          echo "Release 标题：$RELEASE_TITLE"
+          echo "title=$RELEASE_TITLE" >> "$GITHUB_OUTPUT"
+
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          name: ${{ steps.notes.outputs.title }}
           body_path: release-notes.md
           # 一律发成正式 Release：本仓库只有 local 构建，没有「稳定版 / 预发布」之分，
           # 而 GitHub 的 /releases/latest 只认非 prerelease——标成预发布会让 latest
