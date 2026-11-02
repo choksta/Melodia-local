@@ -254,6 +254,15 @@ fun SwipeToSkipCover(
     var displayedCoverUrl by remember { mutableStateOf(coverUrl) }
     var displayedCurrentKey by remember { mutableStateOf(currentKey) }
     var outgoingSlideInfo by remember { mutableStateOf<OutgoingSlideInfo?>(null) }
+    var syncedKey by remember { mutableStateOf(currentKey) }
+    var pendingSlideInKey by remember { mutableStateOf<Any?>(null) }
+    // 这一帧曲目是否真的换了。换了就**不能**刷新 displayed*：下面的方向判定要拿
+    // 「变化前」的邻居 key 去比对（旧的 nextQueueItem 恰好就是新的当前曲目）。
+    // 之前这里无条件刷新，队列索引一先落地就把比对基准覆盖成下下首，
+    // matchesNext/Previous 双双落空 → direction 为 null → 硬切。
+    // 而能不能走滑动取决于「队列索引与 currentTrack 谁先更新」这个竞态，
+    // 表现就是同一台机器上时推时闪。
+    val keyChanged = syncedKey != currentKey
     if (!isTransitioning) {
         val currentKeyStr = currentKey.toString()
         val prevKeyStr = previousKey?.toString()
@@ -263,7 +272,7 @@ fun SwipeToSkipCover(
             (nextKeyStr != null && nextKeyStr == currentKeyStr)
         ) {
             isTransitioning = true
-        } else {
+        } else if (!keyChanged) {
             displayedPreviousCoverUrl = previousCoverUrl
             displayedNextCoverUrl = nextCoverUrl
             displayedPreviousKey = previousKey
@@ -275,17 +284,18 @@ fun SwipeToSkipCover(
     val canSwipeToPrevious = displayedPreviousCoverUrl != null
     val canSwipeToNext = displayedNextCoverUrl != null
 
-    var syncedKey by remember { mutableStateOf(currentKey) }
-    var pendingSlideInKey by remember { mutableStateOf<Any?>(null) }
-    if (!isDragActive && settleJob?.isActive != true && syncedKey != currentKey) {
-        val matchesNext = displayedNextKey != null && displayedNextKey.toString() == currentKey.toString()
+    if (!isDragActive && settleJob?.isActive != true && keyChanged) {
+        // 只看「上一首」这一个方向：向后切是绝大多数情况，也是兜底方向
         val matchesPrevious = displayedPreviousKey != null && displayedPreviousKey.toString() == currentKey.toString()
-        val direction = if (isDragConfirmed) {
+        val direction: SwipeDirection? = if (isDragConfirmed) {
+            // 拖拽自己已经把封面滑出去了，不再补一次程序化滑入
             null
-        } else when {
-            matchesNext -> SwipeDirection.NEXT
-            matchesPrevious -> SwipeDirection.PREVIOUS
-            else -> null
+        } else if (matchesPrevious) {
+            SwipeDirection.PREVIOUS
+        } else {
+            // matchesNext，或者跨多首跳转/队列末尾/邻居数据还没到位导致判不出来的，
+            // 统一按「向后切」推入。硬切就是视觉上的闪一下，比方向猜错刺眼得多
+            SwipeDirection.NEXT
         }
         if (direction != null) {
             outgoingSlideInfo = OutgoingSlideInfo(
