@@ -1,11 +1,13 @@
 package com.lin0721.linmusic.feature.player.ui
 
 import com.lin0721.linmusic.core.ui.components.PlayPauseIcon
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -26,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lin0721.linmusic.core.ui.components.MelodiaIconButton
 import com.lin0721.linmusic.core.ui.components.MiniPlayerProgress
+import com.lin0721.linmusic.core.ui.theme.LocalUiMotion
 import com.lin0721.linmusic.core.ui.theme.MelodiaColors
 import com.lin0721.linmusic.core.ui.theme.MelodiaPress
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
@@ -48,6 +51,8 @@ fun FullPlayerTopBar(
     onArtistClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    // transitionSpec 不是 @Composable 上下文，uiTween 在里面调不了，先取出运动配置
+    val motion = LocalUiMotion.current
     // 与全屏背景顶部同色纯色铺底，不做光斑/模糊
     AnimatedVisibility(
         visible = showTitle,
@@ -76,27 +81,36 @@ fun FullPlayerTopBar(
                         modifier = Modifier.size(32.dp)
                     )
                 }
-                Column(
+                // 与封面下方的歌名同一套过渡，只是这里字小、行紧，去掉位移只做淡入，
+                // 否则两行小字上下错动反而显得抖
+                AnimatedContent(
+                    targetState = title to artist,
+                    transitionSpec = {
+                        fadeIn(motion.tween(180)).togetherWith(fadeOut(motion.tween(140)))
+                    },
+                    label = "top_bar_song_info",
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 12.dp)
-                ) {
-                    Text(
-                        text = title,
-                        color = MelodiaColors.TextPrimary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        modifier = Modifier.basicMarquee()
-                    )
-                    Text(
-                        text = artist,
-                        color = MelodiaColors.TextPrimary.copy(alpha = 0.75f),
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = if (onArtistClick != null) Modifier.clickable(onClick = onArtistClick) else Modifier
-                    )
+                ) { (songTitle, songArtist) ->
+                    Column {
+                        Text(
+                            text = songTitle,
+                            color = MelodiaColors.TextPrimary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            modifier = Modifier.basicMarquee()
+                        )
+                        Text(
+                            text = songArtist,
+                            color = MelodiaColors.TextPrimary.copy(alpha = 0.75f),
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = if (onArtistClick != null) Modifier.clickable(onClick = onArtistClick) else Modifier
+                        )
+                    }
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

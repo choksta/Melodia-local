@@ -17,11 +17,13 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.lin0721.linmusic.core.ui.components.MelodiaIconButton
@@ -53,7 +55,10 @@ fun PlaybackControls(
     isFm: Boolean = false,
     onDislike: () -> Unit = {},
     // 为 null 时右侧回落成循环按钮，非 FM 调用方不必关心
-    onRefreshStream: (() -> Unit)? = null
+    onRefreshStream: (() -> Unit)? = null,
+    // 已下达播放意图但还没真正出声（弱网缓冲）。没有这个提示，点下去界面一动不动，
+    // 用户会以为按钮没响应
+    isBuffering: Boolean = false
 ) {
     val motion = LocalUiMotion.current
     Row(
@@ -119,21 +124,33 @@ fun PlaybackControls(
                 }
             }
 
-            FloatingActionButton(
-                onClick = {
-                    clickTrigger++
-                    onTogglePlay()
-                },
-                containerColor = MelodiaColors.TextPrimary,
-                shape = CircleShape,
-                interactionSource = playInteraction,
-                modifier = Modifier
-                    .size(72.dp)
-                    .graphicsLayer {
-                        alpha = buttonAlpha.value
-                    }
-            ) {
-                PlayPauseIcon(isPlaying, MelodiaColors.InverseText, size = 42.dp)
+            Box(contentAlignment = Alignment.Center) {
+                FloatingActionButton(
+                    onClick = {
+                        clickTrigger++
+                        onTogglePlay()
+                    },
+                    containerColor = MelodiaColors.TextPrimary,
+                    shape = CircleShape,
+                    interactionSource = playInteraction,
+                    modifier = Modifier
+                        .size(72.dp)
+                        .graphicsLayer {
+                            alpha = buttonAlpha.value
+                        }
+                ) {
+                    PlayPauseIcon(isPlaying, MelodiaColors.InverseText, size = 42.dp)
+                }
+                // 外圈转环而不是替换图标：按钮上的暂停图标已经表示"要播了"，
+                // 这里补的是"还在等数据"这一层信息，两者不冲突
+                if (isBuffering) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(84.dp),
+                        color = MelodiaColors.TextPrimary.copy(alpha = 0.55f),
+                        strokeWidth = 2.dp,
+                        trackColor = Color.Transparent
+                    )
+                }
             }
             MelodiaIconButton(onClick = onPlayNext, style = MelodiaPress.Transport) {
                 Icon(Icons.Rounded.SkipNext, contentDescription = null, tint = MelodiaColors.TextPrimary, modifier = Modifier.size(46.dp))

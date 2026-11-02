@@ -186,7 +186,9 @@ fun LazyListScope.fullPlayerPlaybackSection(
             showModeButtons = !podcast.isPodcast,
             isFm = playContext == PlaybackController.CONTEXT_FM,
             onDislike = onDislike,
-            onRefreshStream = onRefreshStream
+            onRefreshStream = onRefreshStream,
+            // 有播放意图但还没真正出声 = 正在缓冲
+            isBuffering = playWhenReady && !isPlaying
         )
     }
 

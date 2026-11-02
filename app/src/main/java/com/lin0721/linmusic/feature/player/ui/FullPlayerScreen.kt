@@ -862,7 +862,8 @@ private fun FullPlayerScreenContent(
                         showModeButtons = !podcast.isPodcast,
                         isFm = playContext == PlaybackController.CONTEXT_FM,
                         onDislike = fmDislike,
-                        onRefreshStream = fmRefresh
+                        onRefreshStream = fmRefresh,
+                        isBuffering = playWhenReady && !isPlaying
                     )
                     ActionButtons(
                         onOutputDeviceClick = { showOutputDeviceSheet = true },
