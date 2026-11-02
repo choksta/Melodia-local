@@ -249,9 +249,9 @@ jobs:
         run: |
           set -u
           APK_DIR=app/build/outputs/apk/release
-          APK="$APK_DIR/Melodia-v${{ needs.version.outputs.name }}-release.apk"
+          APK="$APK_DIR/Melodia-v${{ needs.version.outputs.display }}-release.apk"
           if [ ! -f "$APK" ]; then
-            echo "::error::找不到预期产物 $APK（版本名 ${{ needs.version.outputs.name }}）"
+            echo "::error::找不到预期产物 $APK（版本名 ${{ needs.version.outputs.display }}）"
             echo "目录实际内容："
             ls -l "$APK_DIR" || true
             # 兜底：目录里只有一个 release APK 时就用它，避免命名规则差异卡住发版
