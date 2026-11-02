@@ -44,6 +44,8 @@ jobs:
       name: ${{ steps.version.outputs.name }}
       code: ${{ steps.version.outputs.code }}
       prerelease: ${{ steps.version.outputs.prerelease }}
+      # 展示用版本号：local 构建是 MAJOR.MINOR.localN（如 2.1.53）
+      display: ${{ steps.version.outputs.display }}
 
     steps:
       # 校验 tag 所在分支需要完整历史与远端分支
@@ -121,6 +123,16 @@ jobs:
           echo "name=$TAG_NAME" >> "$GITHUB_OUTPUT"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+
+          # 展示用版本号。local 构建统一成 MAJOR.MINOR.localN 形式（local53 → 2.1.53），
+          # 比 2.1.0-beta.1-local53 直观得多，APK 文件名、App 内关于页、Release 标题共用这一个值。
+          # tag 名保持不变——versionCode 仍按 -localN 规则算，客户端也靠 tag 区分版本。
+          if [ -n "$LOCAL_NUM" ]; then
+            DISPLAY_NAME="${MAJOR}.${MINOR}.${LOCAL_NUM}"
+          else
+            DISPLAY_NAME="$TAG_NAME"
+          fi
+          echo "display=$DISPLAY_NAME" >> "$GITHUB_OUTPUT"
 
       # 手动演练没有 tag，按所选分支构建，不做校验
       - name: 校验 tag 所在分支
@@ -222,7 +234,7 @@ jobs:
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           ./gradlew :app:assembleRelease \
-            -PreleaseVersionName=${{ needs.version.outputs.name }} \
+            -PreleaseVersionName=${{ needs.version.outputs.display }} \
             -PreleaseVersionCode=${{ needs.version.outputs.code }} \
             --no-daemon
 
@@ -363,15 +375,9 @@ jobs:
 
           cat release-notes.md
 
-          # Release 标题不用完整 tag：v2.1.0-beta.1-local53 在列表里太长且被截断，
-          # 而 localN 本身就是唯一的构建序号。tag 名保持不变——workflow 靠它解析
-          # versionCode，客户端也靠它区分版本，只有展示标题需要短。
-          LOCAL_SEQ=$(printf '%s' "$GITHUB_REF_NAME" | sed -nE 's/.*-local([0-9]+)$/\1/p')
-          if [ -n "$LOCAL_SEQ" ]; then
-            RELEASE_TITLE="local$LOCAL_SEQ"
-          else
-            RELEASE_TITLE="$GITHUB_REF_NAME"
-          fi
+          # Release 标题直接用展示版本号（local53 → 2.1.53）：完整 tag 在列表里太长还会被截断。
+          # tag 名保持不变——workflow 靠它解析 versionCode，客户端也靠它区分版本。
+          RELEASE_TITLE="${{ needs.version.outputs.display }}"
           echo "Release 标题：$RELEASE_TITLE"
           echo "title=$RELEASE_TITLE" >> "$GITHUB_OUTPUT"
 
