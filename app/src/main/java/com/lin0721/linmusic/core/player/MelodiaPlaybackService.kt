@@ -104,6 +104,8 @@ class MelodiaPlaybackService : MediaSessionService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var isLikedListLoaded = false
     private var isShowLockscreenEnabled = true
+    // 耳机拔出 / 蓝牙断开自动暂停，onCreate 里随播放器一起建
+    private var headsetDisconnectController: HeadsetDisconnectController? = null
     // 悬浮歌词开启且已锁定时，通知栏提供解锁按钮
     private var isFloatingLyricLocked = false
 
@@ -240,17 +242,20 @@ class MelodiaPlaybackService : MediaSessionService() {
         // session 那套是为了让系统 Equalizer 能在静音期插进音频通路，PCM 均衡器没这个约束
         val renderersFactory = MelodiaRenderersFactory(this) { effectController.newProcessor() }
 
-        // 耳机拔出 / 蓝牙耳机断开（如收回耳机盒）时系统发出 AUDIO_BECOMING_NOISY，需自动暂停，避免外放；
-        // 两台都开启：交叉淡化期间淡出方和缓冲中的新歌也要一起停
+        // 耳机拔出 / 蓝牙断开时自动暂停，避免外放。
+        // 不交给 ExoPlayer 自带的 becoming-noisy 处理：它只暂停被调用的那一台播放器，
+        // CrossfadePlayer 对外的 playWhenReady 不会跟着变（UI 停在"正在播放"、声音已经没了），
+        // 交叉淡化期间也会漏掉另一台正在出声的。统一由 HeadsetDisconnectController 监听
+        // 系统广播 + 输出设备变化，再走 sessionPlayer.pause() 过同一套状态机
         val primaryPlayer = ExoPlayer.Builder(this)
             .setMediaSourceFactory(mediaSourceFactory)
             .setRenderersFactory(renderersFactory)
-            .setHandleAudioBecomingNoisy(true)
+            .setHandleAudioBecomingNoisy(false)
             .build()
         val secondaryPlayer = ExoPlayer.Builder(this)
             .setMediaSourceFactory(mediaSourceFactory)
             .setRenderersFactory(renderersFactory)
-            .setHandleAudioBecomingNoisy(true)
+            .setHandleAudioBecomingNoisy(false)
             .build()
         val sessionPlayer = CrossfadePlayer(
             primary = primaryPlayer,
@@ -293,6 +298,17 @@ class MelodiaPlaybackService : MediaSessionService() {
         }
 
         player = sessionPlayer
+
+        // 耳机断开暂停：暂停请求发给 CrossfadePlayer，别直接调底层 ExoPlayer，
+        // 否则淡化中的两台播放器和对外状态会各走各的
+        headsetDisconnectController = HeadsetDisconnectController(
+            context = this,
+            scope = serviceScope,
+            settingsPreferences = settingsPreferences,
+            onPauseRequested = {
+                if (sessionPlayer.playWhenReady) sessionPlayer.pause()
+            }
+        ).also { it.start() }
 
         // 点击通知时跳转回应用；REORDER_TO_FRONT 避免每次新建 Activity 实例导致重新加载
         val sessionActivityIntent = Intent(this, MainActivity::class.java).apply {
@@ -431,6 +447,8 @@ class MelodiaPlaybackService : MediaSessionService() {
         playerManager.setPlaybackPositionSource(null)
         AppLogger.i(TAG, "Service onDestroy instanceId=${System.identityHashCode(this)}")
         externalInterruptionResumeController.release()
+        headsetDisconnectController?.release()
+        headsetDisconnectController = null
         externalLyricCoordinator.onMetadataChanged = null
         externalLyricCoordinator.release()
         playerManager.release()

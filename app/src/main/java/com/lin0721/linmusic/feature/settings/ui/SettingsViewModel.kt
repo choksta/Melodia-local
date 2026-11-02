@@ -108,6 +108,8 @@ class SettingsViewModel(
 
     val crossfadeEnabled = settingsPreferences.crossfadeEnabled.asState(false)
 
+    val pauseOnHeadsetDisconnect = settingsPreferences.pauseOnHeadsetDisconnect.asState(true)
+
     val crossfadeDurationMs = settingsPreferences.crossfadeDurationMs.asState(CrossfadePolicy.DEFAULT_DURATION_MS)
 
     val audioEffectEnabled = settingsPreferences.audioEffectEnabled.asState(false)
@@ -380,6 +382,8 @@ class SettingsViewModel(
     fun updateResumeAfterExternalInterruption(enabled: Boolean) = launchSave { settingsPreferences.saveResumeAfterExternalInterruption(enabled) }
 
     fun updateCrossfadeEnabled(enabled: Boolean) = launchSave { settingsPreferences.saveCrossfadeEnabled(enabled) }
+
+    fun updatePauseOnHeadsetDisconnect(enabled: Boolean) = launchSave { settingsPreferences.savePauseOnHeadsetDisconnect(enabled) }
 
     fun updateCrossfadeDurationMs(durationMs: Int) = launchSave { settingsPreferences.saveCrossfadeDurationMs(durationMs) }
 

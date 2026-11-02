@@ -78,6 +78,7 @@ fun PlaybackDownloadSettingsView(viewModel: SettingsViewModel) {
     val audioOffload by viewModel.audioOffload.collectAsStateWithLifecycle()
     val resumeAfterExternalInterruption by viewModel.resumeAfterExternalInterruption.collectAsStateWithLifecycle()
     val crossfadeEnabled by viewModel.crossfadeEnabled.collectAsStateWithLifecycle()
+    val pauseOnHeadsetDisconnect by viewModel.pauseOnHeadsetDisconnect.collectAsStateWithLifecycle()
     val crossfadeDurationMs by viewModel.crossfadeDurationMs.collectAsStateWithLifecycle()
     val audioEffectEnabled by viewModel.audioEffectEnabled.collectAsStateWithLifecycle()
     val audioEffectPreset by viewModel.audioEffectPreset.collectAsStateWithLifecycle()
@@ -137,6 +138,13 @@ fun PlaybackDownloadSettingsView(viewModel: SettingsViewModel) {
                     subtitle = "被其他音视频打断暂停后，在对方停止播放时尝试自动继续",
                     checked = resumeAfterExternalInterruption,
                     onCheckedChange = { viewModel.updateResumeAfterExternalInterruption(it) }
+                )
+                HorizontalDivider(color = MelodiaColors.Divider)
+                SettingsSwitchRow(
+                    title = "拔出耳机时暂停",
+                    subtitle = "拔掉有线耳机、蓝牙耳机断开或收回耳机盒时自动暂停，避免突然外放",
+                    checked = pauseOnHeadsetDisconnect,
+                    onCheckedChange = { viewModel.updatePauseOnHeadsetDisconnect(it) }
                 )
                 HorizontalDivider(color = MelodiaColors.Divider)
                 SettingsSwitchRow(

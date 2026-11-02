@@ -64,6 +64,8 @@ class SettingsPreferences(
         private val KEY_RESUME_AFTER_EXTERNAL_INTERRUPTION = booleanPreferencesKey("resume_after_external_interruption")
         // 切歌交叉淡化，默认 false
         private val KEY_CROSSFADE_ENABLED = booleanPreferencesKey("crossfade_enabled")
+        // 拔出耳机 / 蓝牙断开时暂停，默认 true
+        private val KEY_PAUSE_ON_HEADSET_DISCONNECT = booleanPreferencesKey("pause_on_headset_disconnect")
         // 自动切歌交叉淡化时长 (ms)，默认 3000
         private val KEY_CROSSFADE_DURATION_MS = intPreferencesKey("crossfade_duration_ms")
         // 音效调节（均衡器 + 低音增强），默认关闭
@@ -381,6 +383,21 @@ class SettingsPreferences(
     // 切歌交叉淡化开关 Flow
     val crossfadeEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[KEY_CROSSFADE_ENABLED] ?: false
+    }
+
+    /**
+     * 拔出耳机 / 蓝牙耳机断开（收回耳机盒、走出信号范围）时自动暂停。
+     *
+     * 默认开启：不暂停的话音频会直接切到手机外放，在公共场合很尴尬。
+     */
+    val pauseOnHeadsetDisconnect: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_PAUSE_ON_HEADSET_DISCONNECT] ?: true
+    }
+
+    suspend fun savePauseOnHeadsetDisconnect(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[KEY_PAUSE_ON_HEADSET_DISCONNECT] = enabled
+        }
     }
 
     // 与硬件音频解码互斥：淡化时两台播放器同时出声，会争用唯一的卸载通道
