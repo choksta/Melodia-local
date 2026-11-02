@@ -49,6 +49,9 @@ sealed class Screen {
     // 侧边栏二级页
     @Serializable
     data object RecentPlay : Screen()
+
+    @Serializable
+    data object PersonalFm : Screen()
     @Serializable
     data object ListenData : Screen()
     @Serializable

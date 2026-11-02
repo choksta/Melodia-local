@@ -17,6 +17,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import com.lin0721.linmusic.feature.music.data.MusicRepository
 import com.lin0721.linmusic.feature.music.data.MusicRepositoryImpl
+import com.lin0721.linmusic.feature.fm.data.FmRepository
+import com.lin0721.linmusic.feature.fm.data.FmRepositoryImpl
 import com.lin0721.linmusic.feature.home.data.HomeRepository
 import com.lin0721.linmusic.feature.home.data.HomeRepositoryImpl
 import com.lin0721.linmusic.feature.artist.data.ArtistRepository
@@ -89,6 +91,7 @@ val repositoryModule = module {
     singleOf(::AuthRepositoryImpl) { bind<AuthRepository>() }
 
     // 首页数据仓储（feature/home）
+    singleOf(::FmRepositoryImpl) { bind<FmRepository>() }
     singleOf(::HomeRepositoryImpl) { bind<HomeRepository>() }
     singleOf(::MusicRepositoryImpl) { bind<MusicRepository>() }
     singleOf(::PodcastRepositoryImpl) { bind<PodcastRepository>() }

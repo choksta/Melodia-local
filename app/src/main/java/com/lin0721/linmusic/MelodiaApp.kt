@@ -461,7 +461,8 @@ fun MelodiaApp() {
                                         sidebar.close()
                                     },
                                     onNavigateToProfile = { uid -> sidebar.closeThen { navigation.openProfile(uid) } },
-                                    onNavigateToRecentPlay = { sidebar.closeThen { navigation.openRecentPlay() } },
+                                    onNavigateToFm = { sidebar.closeThen { navigation.navigateTo(Screen.PersonalFm) } },
+                    onNavigateToRecentPlay = { sidebar.closeThen { navigation.openRecentPlay() } },
                                     onNavigateToListenData = { sidebar.closeThen { navigation.openListenData() } },
                                     onNavigateToCloud = { sidebar.closeThen { navigation.openCloud() } },
                                     onNavigateToDownloads = { sidebar.closeThen { navigation.openDownloads() } },

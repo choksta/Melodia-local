@@ -251,6 +251,9 @@ fun MelodiaNavHost(
                         onAlbumClick = { albumId -> onNavigateToPlaylist(albumId, true) }
                     )
                 }
+                is Screen.PersonalFm -> {
+                    com.lin0721.linmusic.feature.fm.ui.FmScreen(onBack = onBack)
+                }
                 is Screen.RecentPlay -> {
                     com.lin0721.linmusic.feature.recent.ui.RecentPlayScreen(
                         onBack = onBack,

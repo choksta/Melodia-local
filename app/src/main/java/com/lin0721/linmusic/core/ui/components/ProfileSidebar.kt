@@ -40,6 +40,7 @@ fun ProfileSidebar(
     userProfile: UserProfile,
     onLogout: () -> Unit,
     onNavigateToProfile: (uid: Long) -> Unit,
+    onNavigateToFm: () -> Unit,
     onNavigateToRecentPlay: () -> Unit,
     onNavigateToListenData: () -> Unit,
     onNavigateToCloud: () -> Unit,
@@ -111,6 +112,11 @@ fun ProfileSidebar(
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
         ) {
+            SidebarMenuItem(
+                icon = Icons.Outlined.AllInclusive,
+                title = "私人 FM",
+                onClick = { onNavigateToFm() }
+            )
             SidebarMenuItem(
                 icon = Icons.Outlined.History,
                 title = "最近播放",
