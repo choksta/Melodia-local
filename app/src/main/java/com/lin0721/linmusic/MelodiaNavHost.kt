@@ -251,9 +251,7 @@ fun MelodiaNavHost(
                         onAlbumClick = { albumId -> onNavigateToPlaylist(albumId, true) }
                     )
                 }
-                is Screen.PersonalFm -> {
-                    com.lin0721.linmusic.feature.fm.ui.FmScreen(onBack = onBack)
-                }
+                // 私人 FM 已并入全屏播放页（见 MelodiaApp 的侧栏入口），这里不再有页面
                 is Screen.RecentPlay -> {
                     com.lin0721.linmusic.feature.recent.ui.RecentPlayScreen(
                         onBack = onBack,

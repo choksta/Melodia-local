@@ -13,6 +13,8 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.rounded.AllInclusive
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.FloatingActionButton
@@ -32,6 +34,7 @@ import com.lin0721.linmusic.core.ui.theme.InfoCardRadius
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 
 // 主控件行：随机/漫游、上一曲、播放暂停、下一曲、循环模式
+// FM 上下文下两侧换成「不喜欢」与「换一批」：随机和循环对一条无穷推荐流没有意义
 @Composable
 fun PlaybackControls(
     isPlaying: Boolean,
@@ -46,7 +49,11 @@ fun PlaybackControls(
     isIntelligence: Boolean = false,
     onDisableIntelligence: () -> Unit = {},
     // 播客没有随机与循环，隐藏后用等宽占位保持播放键居中
-    showModeButtons: Boolean = true
+    showModeButtons: Boolean = true,
+    isFm: Boolean = false,
+    onDislike: () -> Unit = {},
+    // 为 null 时右侧回落成循环按钮，非 FM 调用方不必关心
+    onRefreshStream: (() -> Unit)? = null
 ) {
     val motion = LocalUiMotion.current
     Row(
@@ -59,24 +66,28 @@ fun PlaybackControls(
     ) {
         if (showModeButtons) MelodiaIconButton(
             onClick = {
-                if (isRoaming) {
-                    onDisableRoaming()
-                } else if (isIntelligence) {
-                    onDisableIntelligence()
-                } else {
-                    onToggleShuffle()
+                when {
+                    isFm -> onDislike()
+                    isRoaming -> onDisableRoaming()
+                    isIntelligence -> onDisableIntelligence()
+                    else -> onToggleShuffle()
                 }
             },
             modifier = Modifier.offset(x = (-10).dp)
         ) {
             Icon(
                 imageVector = when {
+                    isFm -> Icons.Rounded.Delete
                     isRoaming -> Icons.Rounded.AllInclusive
                     isIntelligence -> Icons.Rounded.AutoAwesome
                     else -> Icons.Default.Shuffle
                 },
-                contentDescription = null,
-                tint = if (isRoaming || isIntelligence || playMode == PlayMode.SHUFFLE) MelodiaColors.TextPrimary else MelodiaColors.TextSecondary,
+                contentDescription = if (isFm) "不喜欢，换一首" else null,
+                tint = if (!isFm && (isRoaming || isIntelligence || playMode == PlayMode.SHUFFLE)) {
+                    MelodiaColors.TextPrimary
+                } else {
+                    MelodiaColors.TextSecondary
+                },
                 modifier = Modifier.size(28.dp)
             )
         } else Spacer(Modifier.size(ModeButtonSlot))
@@ -129,17 +140,33 @@ fun PlaybackControls(
             }
         }
 
-        if (showModeButtons) MelodiaIconButton(
-            onClick = onToggleRepeat,
-            modifier = Modifier.offset(x = 10.dp)
-        ) {
-            Icon(
-                if (playMode == PlayMode.SINGLE_LOOP) Icons.Default.RepeatOne else Icons.Default.Repeat,
-                contentDescription = null,
-                tint = if (playMode == PlayMode.SINGLE_LOOP) MelodiaColors.TextPrimary else MelodiaColors.TextSecondary,
-                modifier = Modifier.size(28.dp)
-            )
-        } else Spacer(Modifier.size(ModeButtonSlot))
+        when {
+            isFm && onRefreshStream != null -> MelodiaIconButton(
+                onClick = onRefreshStream,
+                modifier = Modifier.offset(x = 10.dp)
+            ) {
+                Icon(
+                    Icons.Rounded.Refresh,
+                    contentDescription = "换一批推荐",
+                    tint = MelodiaColors.TextSecondary,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
+            showModeButtons -> MelodiaIconButton(
+                onClick = onToggleRepeat,
+                modifier = Modifier.offset(x = 10.dp)
+            ) {
+                Icon(
+                    if (playMode == PlayMode.SINGLE_LOOP) Icons.Default.RepeatOne else Icons.Default.Repeat,
+                    contentDescription = null,
+                    tint = if (playMode == PlayMode.SINGLE_LOOP) MelodiaColors.TextPrimary else MelodiaColors.TextSecondary,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
+            else -> Spacer(Modifier.size(ModeButtonSlot))
+        }
     }
 }
 

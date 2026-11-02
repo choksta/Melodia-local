@@ -59,6 +59,7 @@ import com.lin0721.linmusic.core.share.ShareCardKind
 import com.lin0721.linmusic.core.ui.components.ToastManager
 import com.lin0721.linmusic.core.ui.theme.themedCoverBase
 import com.lin0721.linmusic.feature.player.share.LyricShareSheet
+import com.lin0721.linmusic.feature.fm.ui.FmViewModel
 import com.lin0721.linmusic.feature.settings.ui.AudioEffectSheet
 import com.lin0721.linmusic.core.ui.theme.FallbackBackdropPalette
 import com.lin0721.linmusic.core.ui.theme.MelodiaOrientationClass
@@ -72,6 +73,7 @@ import com.lin0721.linmusic.core.ui.theme.melodiaStatusBarTopPadding
 import com.lin0721.linmusic.core.ui.theme.rememberMelodiaOrientationClass
 import com.lin0721.linmusic.core.ui.theme.LocalMelodiaPlayerPanelAtStart
 import com.lin0721.linmusic.core.player.PlaySource
+import com.lin0721.linmusic.core.player.PlaybackController
 import com.lin0721.linmusic.core.preferences.FullPlayerCard
 import com.lin0721.linmusic.core.preferences.SettingsPreferences
 import com.lin0721.linmusic.core.ui.theme.uiTween
@@ -183,6 +185,8 @@ private fun FullPlayerScreenContent(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val viewModel: PlayerViewModel = koinViewModel()
+    // FM 没有独立页面，起流/不喜欢/换一批都由播放页直接接管，和侧栏入口共用同一个实例
+    val fmViewModel: FmViewModel = koinViewModel()
     val settingsPreferences: SettingsPreferences = koinInject()
     // 输出设备切换为 Android 专属能力，不在跨平台接口里
     val playerManager: PlayerManager = koinInject()
@@ -212,6 +216,19 @@ private fun FullPlayerScreenContent(
     val previousQueueItem by viewModel.playerManager.previousQueueItem.collectAsStateWithLifecycle()
     val nextQueueItem by viewModel.playerManager.nextQueueItem.collectAsStateWithLifecycle()
     var showQueueSheet by remember { mutableStateOf(false) }
+    // FM 的两个专属动作：不喜欢先上报垃圾桶再跳下一首；换一批则重开一条推荐流
+    val fmDislike: () -> Unit = remember(fmViewModel) {
+        {
+            fmViewModel.dislike()
+            ToastManager.showToast("已标记不喜欢")
+        }
+    }
+    val fmRefresh: () -> Unit = remember(fmViewModel) {
+        {
+            fmViewModel.startNewStream()
+            ToastManager.showToast("正在换一批推荐")
+        }
+    }
     var isLyricsFullScreen by remember { mutableStateOf(false) }
     // 手机全屏歌词盖住状态栏且是有色底，浅色主题下状态栏图标切为浅色
     LightStatusBarIconsWhile(isPlayerOpen && isLyricsFullScreen && onToggleSidebarFullscreen == null)
@@ -705,6 +722,8 @@ private fun FullPlayerScreenContent(
                         onToggleRepeat = viewModel.playerManager::toggleRepeat,
                         onDisableRoaming = { viewModel.playerManager.disableRoaming() },
                         onDisableIntelligence = { viewModel.playerManager.disableIntelligence() },
+                        onDislike = fmDislike,
+                        onRefreshStream = fmRefresh,
                         onOutputDeviceClick = { showOutputDeviceSheet = true },
                         onQueueClick = { showQueueSheet = true },
                         onShareClick = { shareCurrentSong() },
@@ -840,7 +859,10 @@ private fun FullPlayerScreenContent(
                         onDisableRoaming = { viewModel.playerManager.disableRoaming() },
                         isIntelligence = playContext == "intelligence",
                         onDisableIntelligence = { viewModel.playerManager.disableIntelligence() },
-                        showModeButtons = !podcast.isPodcast
+                        showModeButtons = !podcast.isPodcast,
+                        isFm = playContext == PlaybackController.CONTEXT_FM,
+                        onDislike = fmDislike,
+                        onRefreshStream = fmRefresh
                     )
                     ActionButtons(
                         onOutputDeviceClick = { showOutputDeviceSheet = true },

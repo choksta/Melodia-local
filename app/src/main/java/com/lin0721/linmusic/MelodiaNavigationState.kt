@@ -51,8 +51,6 @@ sealed class Screen {
     data object RecentPlay : Screen()
 
     @Serializable
-    data object PersonalFm : Screen()
-    @Serializable
     data object ListenData : Screen()
     @Serializable
     data object Cloud : Screen()

@@ -184,6 +184,8 @@ fun FullPlayerSourceBar(
                 "每日推荐" -> "播放自" to "每日推荐"
                 "历史日推" -> "播放自" to "历史日推"
                 "intelligence" -> "播放自" to "心动模式"
+                // FM 没有自己的页面，播放页就是它的界面，来源这里必须认得出来
+                PlaybackController.CONTEXT_FM -> "播放自" to "私人 FM"
                 PlaybackController.CONTEXT_PODCAST -> "播放自播客" to podcastRadioName.ifBlank { "播客" }
                 else -> "播放自歌单" to context
             }

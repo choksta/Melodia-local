@@ -58,39 +58,65 @@ class FmViewModel(
         }
     }
 
-    /** 进入页面时调用。已经在播 FM 就接着播，不要打断。 */
-    fun enter() {
-        // 必须同时满足「播放器在播 FM」和「本页手里有这首歌的数据」。
-        // 进程重启后播放器会恢复上次的 FM 队列，playContext 仍是 fm_personal，
-        // 但本 ViewModel 是新实例、缓存为空——只看 context 会误判成「已在播」，
-        // 页面于是停在空状态，而底下播放条还在放歌。
-        if (isFmActive() && _current.value != null) return
-        startNewStream()
+    /**
+     * 入口用：还没开流就先拉好第一批再返回，让播放页一打开就是 FM 的歌。
+     *
+     * 不用「先打开播放页、等接口回来再切歌」——那样用户会先看到上一首的封面/背景，
+     * 几百毫秒后才跳过去，就是之前修过的「闪回」问题。这里挂起到拿到结果为止，
+     * 期间侧栏收起动画正在走，用户感知不到等待。
+     *
+     * 返回 false 表示没起成（网络/接口问题），调用方不应打开播放页。
+     */
+    suspend fun startIfNeeded(): Boolean {
+        if (isFmActive()) {
+            // 播放器还在 FM 流里，但本 ViewModel 是新实例（Activity 重建、进程被回收后恢复）：
+            // 用当前曲目补一份占位数据。之前只判 _current 非空，这种情况会被当成「没有会话」
+            // 重新拉一批，把用户正在听的歌直接切走。
+            if (_current.value == null) {
+                playerManager.currentQueueItem.value?.let { item ->
+                    _current.value = FmSong(id = item.songId, name = item.title)
+                }
+            }
+            // 点「私人 FM」的语义是开始听，暂停态进来就接着放
+            if (!playerManager.playWhenReady.value) playerManager.resume()
+            return true
+        }
+        return loadStream()
     }
+
+    /** 播放器是否正处在 FM 流里。入口据此决定要不要提示「正在挑选」。 */
+    fun isActive(): Boolean = isFmActive()
 
     /** 重新开一条 FM 流（首次进入，或用户主动重开）。 */
     fun startNewStream() {
         requestJob?.cancel()
-        requestJob = viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
-            repository.nextBatch(BATCH_SIZE)
-                .onSuccess { songs ->
+        requestJob = viewModelScope.launch { loadStream() }
+    }
+
+    /** 拉一批歌并起播；成功返回 true。 */
+    private suspend fun loadStream(): Boolean {
+        _state.update { it.copy(isLoading = true, error = null) }
+        return repository.nextBatch(BATCH_SIZE)
+            .fold(
+                onSuccess = { songs ->
                     if (songs.isEmpty()) {
                         _state.update { it.copy(isLoading = false, error = "没有拿到推荐歌曲") }
-                        return@onSuccess
+                        false
+                    } else {
+                        songs.forEach { songCache[it.id] = it }
+                        playerManager.playQueue(songs.map { it.toQueueItem() }, 0, CONTEXT_FM)
+                        _current.value = songs.first()
+                        _state.update { it.copy(isLoading = false, isFmActive = true) }
+                        true
                     }
-                    songs.forEach { songCache[it.id] = it }
-                    val items = songs.map { it.toQueueItem() }
-                    playerManager.playQueue(items, 0, CONTEXT_FM)
-                    _current.value = songs.first()
-                    _state.update { it.copy(isLoading = false, isFmActive = true) }
-                }
-                .onFailure { error ->
+                },
+                onFailure = { error ->
                     _state.update {
                         it.copy(isLoading = false, error = error.message ?: "私人 FM 加载失败")
                     }
+                    false
                 }
-        }
+            )
     }
 
     fun next() {
@@ -108,6 +134,7 @@ class FmViewModel(
                 _state.update { it.copy(isLoading = true) }
                 repository.nextBatch(BATCH_SIZE)
                     .onSuccess { songs ->
+                        songs.forEach { songCache[it.id] = it }
                         playerManager.appendToQueue(songs.map { it.toQueueItem() })
                         playerManager.playNext()
                         _state.update { it.copy(isLoading = false) }
@@ -174,7 +201,7 @@ class FmViewModel(
 
     companion object {
         /** 播放上下文标记。FM 队列与普通歌单队列靠它区分。 */
-        const val CONTEXT_FM = "fm_personal"
+        const val CONTEXT_FM = PlaybackController.CONTEXT_FM
 
         private const val BATCH_SIZE = 3
         private const val EXTEND_THRESHOLD = 1

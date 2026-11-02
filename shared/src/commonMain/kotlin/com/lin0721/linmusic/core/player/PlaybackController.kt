@@ -24,6 +24,14 @@ interface PlaybackController {
     companion object {
         const val CONTEXT_INTELLIGENCE = "intelligence"
         const val CONTEXT_PODCAST = "podcast"
+
+        /**
+         * 私人 FM 播放上下文。
+         *
+         * FM 没有独立播放器页面，它就是一条播放上下文：点侧栏入口只负责起流，
+         * 界面交给全屏播放页，靠这个标记决定来源文案与「不喜欢」按钮。
+         */
+        const val CONTEXT_FM = "fm_personal"
     }
 
     val isPlaying: StateFlow<Boolean>

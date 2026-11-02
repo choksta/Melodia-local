@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.lin0721.linmusic.core.ui.theme.uiTween
 import com.lin0721.linmusic.feature.podcast.ui.PodcastPlayerState
 import com.lin0721.linmusic.core.player.PlayMode
+import com.lin0721.linmusic.core.player.PlaybackController
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.PlayerBackdropPalette
 
@@ -70,6 +71,9 @@ fun LazyListScope.fullPlayerPlaybackSection(
     onToggleRepeat: () -> Unit,
     onDisableRoaming: () -> Unit,
     onDisableIntelligence: () -> Unit,
+    // 私人 FM：左侧控件换成「不喜欢」，右侧换成「换一批」
+    onDislike: () -> Unit = {},
+    onRefreshStream: (() -> Unit)? = null,
     onOutputDeviceClick: () -> Unit,
     onQueueClick: () -> Unit,
     onShareClick: () -> Unit,
@@ -179,7 +183,10 @@ fun LazyListScope.fullPlayerPlaybackSection(
             onDisableRoaming = onDisableRoaming,
             isIntelligence = playContext == "intelligence",
             onDisableIntelligence = onDisableIntelligence,
-            showModeButtons = !podcast.isPodcast
+            showModeButtons = !podcast.isPodcast,
+            isFm = playContext == PlaybackController.CONTEXT_FM,
+            onDislike = onDislike,
+            onRefreshStream = onRefreshStream
         )
     }
 

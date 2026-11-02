@@ -98,6 +98,7 @@ import com.lin0721.linmusic.core.preferences.ThemeMode
 import com.lin0721.linmusic.core.ui.theme.LocalMelodiaPalette
 import com.lin0721.linmusic.core.update.UpdateChecker
 import com.lin0721.linmusic.feature.home.ui.HomeViewModel
+import com.lin0721.linmusic.feature.fm.ui.FmViewModel
 import com.lin0721.linmusic.feature.settings.ui.UpdateDialog
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
@@ -145,6 +146,8 @@ fun MelodiaApp() {
     val motion = LocalUiMotion.current
     val viewModel: HomeViewModel = koinViewModel()
     val libraryViewModel: LibraryViewModel = koinViewModel()
+    // 私人 FM 没有独立页面：入口只负责把流起起来，界面交给全屏播放页
+    val fmViewModel: FmViewModel = koinViewModel()
     val settingsPreferences: SettingsPreferences = koinInject()
     // 侧栏明暗一键切换：写入偏好后由主题流驱动重组，并走 ThemeRevealHost 扩散动画
     val themeToggleScope = rememberCoroutineScope()
@@ -205,6 +208,7 @@ fun MelodiaApp() {
     val playerSheet = rememberMelodiaPlayerSheetState()
     val navigation = rememberMelodiaNavigationState()
     val sidebar = rememberMelodiaSidebarState()
+    val fmEntryScope = rememberCoroutineScope()
 
     // 动态同步底栏首个可用路由为首选根 Tab
     LaunchedEffect(bottomBarLayout) {
@@ -461,7 +465,29 @@ fun MelodiaApp() {
                                         sidebar.close()
                                     },
                                     onNavigateToProfile = { uid -> sidebar.closeThen { navigation.openProfile(uid) } },
-                                    onNavigateToFm = { sidebar.closeThen { navigation.navigateTo(Screen.PersonalFm) } },
+                                    // 私人 FM 没有独立页面，界面就是全屏播放页。
+                                    // 必须先等第一批歌拉回来再打开播放器：先开会先闪一下上一首的封面和背景，
+                                    // 几百毫秒后才跳到 FM 的第一首——就是这个项目一直在修的「闪回」。
+                                    onNavigateToFm = {
+                                        sidebar.closeThen {
+                                            // 首次起流要等接口，这期间界面不会有任何变化，
+                                            // 不给一句提示会像点了没反应
+                                            if (!fmViewModel.isActive()) {
+                                                ToastManager.showToast("正在挑选歌曲…")
+                                            }
+                                            fmEntryScope.launch {
+                                                if (fmViewModel.startIfNeeded()) {
+                                                    if (usePanel) {
+                                                        isPanelExpanded = true
+                                                    } else {
+                                                        playerSheet.animateTo(true, 0f)
+                                                    }
+                                                } else {
+                                                    ToastManager.showToast("私人 FM 加载失败，稍后再试")
+                                                }
+                                            }
+                                        }
+                                    },
                     onNavigateToRecentPlay = { sidebar.closeThen { navigation.openRecentPlay() } },
                                     onNavigateToListenData = { sidebar.closeThen { navigation.openListenData() } },
                                     onNavigateToCloud = { sidebar.closeThen { navigation.openCloud() } },
