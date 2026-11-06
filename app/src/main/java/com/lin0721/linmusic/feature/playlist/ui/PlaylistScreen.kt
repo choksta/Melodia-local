@@ -1,5 +1,6 @@
 package com.lin0721.linmusic.feature.playlist.ui
 
+import com.lin0721.linmusic.core.plugin.isPluginCollectionId
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -87,6 +88,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,6 +102,8 @@ fun PlaylistScreen(
     onNavigateToProfile: (Long) -> Unit = {}
 ) {
     val motion = LocalUiMotion.current
+    val settingsPreferences = koinInject<com.lin0721.linmusic.core.preferences.SettingsPreferences>()
+    val showTrackIndex by settingsPreferences.playlistTrackIndexEnabled.collectAsStateWithLifecycle(false)
     val uiState      by viewModel.uiState.collectAsStateWithLifecycle()
     val currentTrack by viewModel.playerManager.nowPlaying.collectAsStateWithLifecycle()
     val isPlaying by viewModel.playerManager.playWhenReady.collectAsStateWithLifecycle()
@@ -235,7 +239,7 @@ fun PlaylistScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Box(modifier = Modifier.fillMaxSize().background(MelodiaColors.PageFill)) {
         when (val state = uiState) {
             is PlaylistUiState.Loading ->
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -428,7 +432,7 @@ fun PlaylistScreen(
                         }
                     }
 
-                    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                    Box(modifier = Modifier.fillMaxSize().background(MelodiaColors.PageFill)) {
                         PlaylistReorderTopBar(
                             overlayHeight = overlayHeight,
                             statusBarHeight = statusBarHeight,
@@ -568,6 +572,7 @@ fun PlaylistScreen(
                     likedSongIds   = likedSongIds,
                     unplayableIds  = unplayableIds,
                     externalPlatforms = externalPlatforms,
+                    showTrackIndex = showTrackIndex,
                     collectState   = collectState,
                     isLoggedIn     = userProfile != null,
                     recommendedSongs = state.recommendedSongs,
@@ -1007,24 +1012,26 @@ fun PlaylistScreen(
                                 }
                             }
                         )
-                        add(
-                            PlaylistMenuItem(
-                                icon = Icons.Default.Share,
-                                title = "分享$resourceLabel"
-                            ) {
-                                showMoreMenuSheet = false
-                                sharePlaylistOrAlbum(playlist.name, playlist.id)
-                            }
-                        )
-                        add(
-                            PlaylistMenuItem(
-                                icon = Icons.Default.Download,
-                                title = "下载$resourceLabel"
-                            ) {
-                                showMoreMenuSheet = false
-                                showDownloadQualitySheet = true
-                            }
-                        )
+                        if (!isPluginCollectionId(playlist.id)) {
+                            add(
+                                PlaylistMenuItem(
+                                    icon = Icons.Default.Share,
+                                    title = "分享$resourceLabel"
+                                ) {
+                                    showMoreMenuSheet = false
+                                    sharePlaylistOrAlbum(playlist.name, playlist.id)
+                                }
+                            )
+                            add(
+                                PlaylistMenuItem(
+                                    icon = Icons.Default.Download,
+                                    title = "下载$resourceLabel"
+                                ) {
+                                    showMoreMenuSheet = false
+                                    showDownloadQualitySheet = true
+                                }
+                            )
+                        }
                         if (isManageable) {
                             add(
                                 PlaylistMenuItem(

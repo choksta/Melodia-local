@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -57,11 +58,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
@@ -74,6 +77,7 @@ import com.lin0721.linmusic.core.ui.theme.RadiusCompact
 import com.lin0721.linmusic.core.ui.theme.LocalMelodiaWindowSizeClass
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.MelodiaWindowSizeClass
+import com.lin0721.linmusic.core.ui.theme.densityScaled
 import com.lin0721.linmusic.core.ui.theme.themedShadow
 import com.lin0721.linmusic.core.ui.theme.uiSpring
 import com.lin0721.linmusic.core.ui.theme.uiTween
@@ -119,6 +123,8 @@ fun SongRow(
     copyable: Boolean = false,
     // 非 null 表示处于多选态：行首显示复选框，勾选态由调用方随 onClick 切换
     selectionChecked: Boolean? = null,
+    // 列表最大序号的位数，序号列按它留宽，整列才对齐
+    indexDigits: Int = 2,
     trailingSlot: @Composable RowScope.() -> Unit = {}
 ) {
     // 平板 Expanded 断点下行高/封面/字号统一加码，结构不变
@@ -160,7 +166,7 @@ fun SongRow(
             .fillMaxWidth()
             .alpha(if (enabled) 1f else DISABLED_ROW_ALPHA)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = MelodiaSpacing.md, vertical = verticalPadding),
+            .padding(horizontal = MelodiaSpacing.md, vertical = densityScaled(verticalPadding)),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // 退出动画期间 selectionChecked 已为 null，保留最后的勾选态避免复选框收起时闪一下
@@ -178,12 +184,16 @@ fun SongRow(
             )
         }
         if (index != null) {
+            // 按 sp 换算，系统字号放大时序号列跟着变宽
+            val indexMinWidth = with(LocalDensity.current) { max(28.dp, (indexDigits * 9 + 8).sp.toDp()) }
             Text(
                 text = index.toString(),
                 color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.width(28.dp),
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.widthIn(min = indexMinWidth),
                 textAlign = TextAlign.Start
             )
         }
@@ -413,7 +423,7 @@ fun DraggableSongRow(
         when {
             isDragging -> MaterialTheme.colorScheme.surfaceVariant
             isCurrent -> MaterialTheme.colorScheme.surface
-            else -> MaterialTheme.colorScheme.background
+            else -> MelodiaColors.PageFill
         },
         animationSpec = uiSpring(),
         label = "row_bg"

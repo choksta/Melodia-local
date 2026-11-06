@@ -110,6 +110,16 @@
 - **安装说明**：包名为 `com.choksta.melodia`，与官方版可并存安装；覆盖安装不会清除数据
 
 ---
+
+## 插件
+
+插件系统与插件规范来自上游项目，本仓库同步支持：
+
+- **插件仓库**：[rinchao0721/melodia-plugins](https://github.com/rinchao0721/melodia-plugins)
+- **在线浏览与下载**：<https://rinchao0721.github.io/melodia-plugins/>
+- **插件规范**：[docs/plugin-format.md](docs/plugin-format.md)；目录格式见 [docs/plugin-catalog.md](docs/plugin-catalog.md)
+
+---
 ## 项目架构
 
 项目由三个 Gradle 模块组成，网易云接口、加密、数据仓储与大部分 ViewModel 只在 `shared` 中维护一份，Android 与桌面端各自负责界面和平台能力：

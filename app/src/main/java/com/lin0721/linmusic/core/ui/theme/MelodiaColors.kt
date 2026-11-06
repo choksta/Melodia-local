@@ -3,6 +3,9 @@ package com.lin0721.linmusic.core.ui.theme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
+import com.lin0721.linmusic.core.ui.skin.CoverGroup
+import com.lin0721.linmusic.core.ui.skin.LocalCoverPolicy
+import com.lin0721.linmusic.core.ui.skin.LocalImmersiveBasePalette
 
 private val NavPillSelectedDark = Color(0xFF383A4A)
 private val FilterPillInactiveDark = Color(0xFF332B2B)
@@ -11,6 +14,21 @@ private val FilterPillInactiveDark = Color(0xFF332B2B)
 object MelodiaColors {
     val WindowBackground: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.windowBackground
     val Background: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.pane
+    val CanvasFill: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.canvasFill
+    val ShellFill: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.shellFill
+    val PageFill: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.pageFill
+    val HasBackdrop: Boolean @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.backdrop != null
+
+    // 封面色卡片上的文字与图标；卡片透出皮肤背景图时改用色板文字色，Inverse 为其上白底按钮里的图标色
+    val OnCoverCard: Color
+        @Composable @ReadOnlyComposable get() = if (LocalCoverPolicy.current.isBackdrop(CoverGroup.CARDS)) TextPrimary else Color.White
+    val OnCoverCardInverse: Color
+        @Composable @ReadOnlyComposable get() = if (LocalCoverPolicy.current.isBackdrop(CoverGroup.CARDS)) Background else Color.Black
+
+    // 页面铺底按比例降低不透明度；有皮肤背景图时始终全透明
+    @Composable
+    @ReadOnlyComposable
+    fun pageFill(alpha: Float): Color = PageFill.let { it.copy(alpha = it.alpha * alpha) }
     val CardSurface: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.cardSurface
     val PopupSurface: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.popupSurface
     val Surface: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.surface
@@ -31,6 +49,16 @@ object MelodiaColors {
     val Divider: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.divider
     val Outline: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.outline
     val Scrim: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.scrim
+    val ShadowSpot: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.shadowSpot
+    val ShadowAmbient: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.shadowAmbient
+
+    // 播放区（封面色或沉浸深色底）上的文字与图标，跟随皮肤的深色配色
+    val OnPlayer: Color @Composable @ReadOnlyComposable get() = LocalImmersiveBasePalette.current.textPrimary
+
+    // 有色铺底上的强调色与次要文字；铺底外退回主色与 OnPlayer 75%
+    val OnCoverAccent: Color @Composable @ReadOnlyComposable get() = LocalOnCoverColors.current?.accent ?: Accent
+    val OnCoverSecondary: Color
+        @Composable @ReadOnlyComposable get() = LocalOnCoverColors.current?.contentSecondary ?: OnPlayer.copy(alpha = 0.75f)
     val Success: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.success
     val Vip: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.vip
     val Error: Color @Composable @ReadOnlyComposable get() = LocalMelodiaPalette.current.error

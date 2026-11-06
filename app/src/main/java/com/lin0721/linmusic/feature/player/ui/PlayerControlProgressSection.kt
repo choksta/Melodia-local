@@ -1,5 +1,6 @@
 package com.lin0721.linmusic.feature.player.ui
 
+import androidx.compose.ui.unit.Dp
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
@@ -23,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lin0721.linmusic.core.ui.theme.MelodiaColors
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
+import com.lin0721.linmusic.core.ui.theme.progressScaled
 import com.lin0721.linmusic.core.ui.theme.uiTween
 import kotlin.math.abs
 
@@ -37,7 +39,9 @@ fun ProgressSection(
     currentPositionProvider: () -> Long,
     duration: Long,
     onSeek: (Long) -> Unit,
-    chorusStartMs: Long? = null
+    chorusStartMs: Long? = null,
+    showTime: Boolean = true,
+    horizontalPadding: Dp = MelodiaSpacing.lg
 ) {
     var isSeeking by remember { mutableStateOf(false) }
     // 拖动增量累加在 raw 上，seekPosition 是吸附后的值
@@ -64,7 +68,7 @@ fun ProgressSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = MelodiaSpacing.lg)
+            .padding(horizontal = horizontalPadding)
             .padding(top = MelodiaSpacing.sm)
     ) {
         var trackWidthPx by remember { mutableFloatStateOf(0f) }
@@ -126,8 +130,8 @@ fun ProgressSection(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .height(progressScaled(4.dp))
+                    .clip(RoundedCornerShape(progressScaled(2.dp)))
                     .background(MelodiaColors.SurfaceLight)
             )
 
@@ -135,8 +139,8 @@ fun ProgressSection(
             Box(
                 modifier = Modifier
                     .fillMaxWidth(progress)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .height(progressScaled(4.dp))
+                    .clip(RoundedCornerShape(progressScaled(2.dp)))
                     .background(MelodiaColors.TextPrimary)
             )
 
@@ -172,15 +176,17 @@ fun ProgressSection(
             }
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 2.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            val displayPosition = if (isSeeking) (seekPosition * duration).toLong() else currentPosition
-            Text(formatTime(displayPosition), color = MelodiaColors.TextSecondary, fontSize = 13.sp)
-            Text(formatTime(duration), color = MelodiaColors.TextSecondary, fontSize = 13.sp)
+        if (showTime) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                val displayPosition = if (isSeeking) (seekPosition * duration).toLong() else currentPosition
+                Text(formatTime(displayPosition), color = MelodiaColors.TextSecondary, fontSize = 13.sp)
+                Text(formatTime(duration), color = MelodiaColors.TextSecondary, fontSize = 13.sp)
+            }
         }
     }
 }

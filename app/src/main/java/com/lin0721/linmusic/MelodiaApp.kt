@@ -1,5 +1,6 @@
 package com.lin0721.linmusic
 
+import com.lin0721.linmusic.core.plugin.PluginContent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -32,6 +33,7 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalDrawerSheet
@@ -40,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +64,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToDown
 import androidx.compose.ui.input.pointer.pointerInput
@@ -75,7 +79,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lin0721.linmusic.core.ui.components.PlaylistCollectSheet
+import com.lin0721.linmusic.core.ui.components.LoginBottomSheet
 import com.lin0721.linmusic.core.ui.components.ProfileSidebar
+import com.lin0721.linmusic.core.ui.components.WebViewLoginScreen
 import com.lin0721.linmusic.core.ui.components.ToastManager
 import com.lin0721.linmusic.core.ui.interaction.pressable
 import com.lin0721.linmusic.core.ui.theme.LocalUiMotion
@@ -83,6 +89,7 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaColors
 import com.lin0721.linmusic.core.ui.theme.ScreenSlideDurationMs
 import com.lin0721.linmusic.core.ui.components.MiniPlayerCard
 import com.lin0721.linmusic.core.ui.components.MiniPlayerLikeMode
+import com.lin0721.linmusic.core.ui.theme.skinBackdropRoot
 import com.lin0721.linmusic.core.ui.theme.uiTween
 import com.lin0721.linmusic.core.player.floatinglyric.FloatingLyricRequests
 import com.lin0721.linmusic.feature.recognition.service.PlaybackRecognitionState
@@ -209,6 +216,8 @@ fun MelodiaApp() {
     val navigation = rememberMelodiaNavigationState()
     val sidebar = rememberMelodiaSidebarState()
     val fmEntryScope = rememberCoroutineScope()
+    val pluginContent: PluginContent = koinInject()
+    LaunchedEffect(navigation) { pluginContent.opens.collect { navigation.openPlaylist(it.id, false) } }
 
     // 动态同步底栏首个可用路由为首选根 Tab
     LaunchedEffect(bottomBarLayout) {
@@ -252,6 +261,9 @@ fun MelodiaApp() {
     }
     // 网页登录界面可见性状态
     var isLoginScreenVisible by remember { mutableStateOf(false) }
+    // 侧边栏未登录入口触发的登录，侧栏可从任意页面拉出，登录界面挂在全局层
+    var showSidebarLoginSheet by remember { mutableStateOf(false) }
+    var showSidebarWebLogin by remember { mutableStateOf(false) }
     // 悬浮播放卡片 + 导航栏的实际高度，下发给各页面用作列表底部留白
     var bottomOverlayHeight by remember { mutableStateOf(0.dp) }
     val miniPlayerSuppressor = remember { MiniPlayerSuppressor() }
@@ -407,7 +419,8 @@ fun MelodiaApp() {
         modifier = Modifier
             .fillMaxSize()
             .onSizeChanged { playerSheet.onScreenSizeChanged(it.height.toFloat()) }
-            .background(MelodiaColors.Background)
+            // 皮肤的根画布：没有皮肤背景图时等价于纯色，有背景图时在这里一次性铺满
+            .skinBackdropRoot(MelodiaColors.Background)
     ) {
         // 侧边栏改用 Material3 的 ModalNavigationDrawer 承载。
         //
@@ -418,7 +431,8 @@ fun MelodiaApp() {
         // 视觉上从「内容被推开」变为「面板盖上来 + 遮罩变暗」。
         ModalNavigationDrawer(
             drawerState = sidebar.drawerState,
-            gesturesEnabled = userProfile != null && !isEdgeSwipeBlocked,
+            // 未登录也允许拉出侧栏：设置、下载管理等入口不需要账号
+            gesturesEnabled = !isEdgeSwipeBlocked,
             scrimColor = Color.Transparent,
             drawerContent = {
                 // 自己接管面板位置与遮罩，不用框架的 spring（StiffnessMediumLow，
@@ -457,47 +471,47 @@ fun MelodiaApp() {
                             drawerShape = RectangleShape,
                             drawerContainerColor = MelodiaColors.Background
                         ) {
-                            userProfile?.let { profile ->
-                                ProfileSidebar(
-                                    userProfile = profile,
-                                    onLogout = {
-                                        viewModel.logout()
-                                        sidebar.close()
-                                    },
-                                    onNavigateToProfile = { uid -> sidebar.closeThen { navigation.openProfile(uid) } },
-                                    // 私人 FM 没有独立页面，界面就是全屏播放页。
-                                    // 必须先等第一批歌拉回来再打开播放器：先开会先闪一下上一首的封面和背景，
-                                    // 几百毫秒后才跳到 FM 的第一首——就是这个项目一直在修的「闪回」。
-                                    onNavigateToFm = {
-                                        sidebar.closeThen {
-                                            // 首次起流要等接口，这期间界面不会有任何变化，
-                                            // 不给一句提示会像点了没反应
-                                            if (!fmViewModel.isActive()) {
-                                                ToastManager.showToast("正在挑选歌曲…")
-                                            }
-                                            fmEntryScope.launch {
-                                                if (fmViewModel.startIfNeeded()) {
-                                                    if (usePanel) {
-                                                        isPanelExpanded = true
-                                                    } else {
-                                                        playerSheet.animateTo(true, 0f)
-                                                    }
+                            ProfileSidebar(
+                                userProfile = userProfile,
+                                onLogin = { showSidebarLoginSheet = true },
+                                onLogout = {
+                                    viewModel.logout()
+                                    sidebar.close()
+                                },
+                                onDismiss = { sidebar.close() },
+                                onNavigateToProfile = { uid -> sidebar.closeThen { navigation.openProfile(uid) } },
+                                // 私人 FM 没有独立页面，界面就是全屏播放页。
+                                // 必须先等第一批歌拉回来再打开播放器：先开会先闪一下上一首的封面和背景，
+                                // 几百毫秒后才跳到 FM 的第一首——就是这个项目一直在修的「闪回」。
+                                onNavigateToFm = {
+                                    sidebar.closeThen {
+                                        // 首次起流要等接口，这期间界面不会有任何变化，
+                                        // 不给一句提示会像点了没反应
+                                        if (!fmViewModel.isActive()) {
+                                            ToastManager.showToast("正在挑选歌曲…")
+                                        }
+                                        fmEntryScope.launch {
+                                            if (fmViewModel.startIfNeeded()) {
+                                                if (usePanel) {
+                                                    isPanelExpanded = true
                                                 } else {
-                                                    ToastManager.showToast("私人 FM 加载失败，稍后再试")
+                                                    playerSheet.animateTo(true, 0f)
                                                 }
+                                            } else {
+                                                ToastManager.showToast("私人 FM 加载失败，稍后再试")
                                             }
                                         }
-                                    },
-                    onNavigateToRecentPlay = { sidebar.closeThen { navigation.openRecentPlay() } },
-                                    onNavigateToListenData = { sidebar.closeThen { navigation.openListenData() } },
-                                    onNavigateToCloud = { sidebar.closeThen { navigation.openCloud() } },
-                                    onNavigateToDownloads = { sidebar.closeThen { navigation.openDownloads() } },
-                                    onNavigateToMessage = { sidebar.closeThen { navigation.openMessage() } },
-                                    onNavigateToSettings = { sidebar.closeThen { navigation.navigateTo(Screen.Settings) } },
-                                    isDarkTheme = isDarkTheme,
-                                    onToggleTheme = { sidebar.closeThen(onToggleTheme) }
-                                )
-                            }
+                                    }
+                                },
+                                onNavigateToRecentPlay = { sidebar.closeThen { navigation.openRecentPlay() } },
+                                onNavigateToListenData = { sidebar.closeThen { navigation.openListenData() } },
+                                onNavigateToCloud = { sidebar.closeThen { navigation.openCloud() } },
+                                onNavigateToDownloads = { sidebar.closeThen { navigation.openDownloads() } },
+                                onNavigateToMessage = { sidebar.closeThen { navigation.openMessage() } },
+                                onNavigateToSettings = { sidebar.closeThen { navigation.navigateTo(Screen.Settings) } },
+                                isDarkTheme = isDarkTheme,
+                                onToggleTheme = { sidebar.closeThen(onToggleTheme) }
+                            )
                         }
                     }
                 }
@@ -548,7 +562,7 @@ fun MelodiaApp() {
                                         .padding(top = statusBarTop, bottom = navigationBarBottom)
                                         .consumeWindowInsets(WindowInsets.statusBars.union(WindowInsets.navigationBars))
                                         .clip(RoundedCornerShape(InfoCardRadius))
-                                        .background(MelodiaColors.Background)
+                                        .background(MelodiaColors.ShellFill)
                                 } else {
                                     Modifier
                                 }
@@ -591,7 +605,7 @@ fun MelodiaApp() {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.4f))
+                                    .background(MelodiaColors.Scrim.copy(alpha = 0.4f))
                                     .pressable(MelodiaPress.None) { showCreateSheet = false }
                             )
                         }
@@ -601,7 +615,7 @@ fun MelodiaApp() {
                             modifier = Modifier.align(Alignment.BottomCenter),
                             currentScreen = navigation.currentScreen,
                             showCreateSheet = showCreateSheet,
-                            isLoginScreenVisible = isLoginScreenVisible,
+                            isLoginScreenVisible = isLoginScreenVisible || showSidebarWebLogin,
                             isMiniPlayerHidden = miniPlayerSuppressor.requestCount > 0,
                             isPanelDocked = isPanelDocked,
                             currentTrack = currentTrack,
@@ -662,6 +676,7 @@ fun MelodiaApp() {
             // 全屏时朝内容区一侧推到距对侧屏幕边 sm 处，宽度只在布局阶段读进度
             if ((isPanelShown || hasPanelBeenShown) && usePanel) {
                 val panelEdgePadding = if (isLyricsFullScreen) 0.dp else MelodiaSpacing.sm
+                val panelRadius = InfoCardRadius
                 Box(
                     modifier = Modifier
                         .align(if (isPanelAtStart) Alignment.TopStart else Alignment.TopEnd)
@@ -697,7 +712,7 @@ fun MelodiaApp() {
                                 val miniBottom = size.height - MelodiaSpacing.sm.toPx()
                                 val miniTop = miniBottom - ExpandedBottomBarHeight.toPx()
                                 val radius = PanelRiseStartRadius.toPx() +
-                                    (InfoCardRadius.toPx() - PanelRiseStartRadius.toPx()) * progress
+                                    (panelRadius.toPx() - PanelRiseStartRadius.toPx()) * progress
                                 clip = true
                                 shape = PanelRevealShape(
                                     top = miniTop * (1f - progress),
@@ -838,6 +853,34 @@ fun MelodiaApp() {
                         likeMode = miniPlayerLikeMode,
                         modifier = modifier
                     )
+                }
+            )
+        }
+
+        if (showSidebarLoginSheet) {
+            LoginBottomSheet(
+                onDismiss = { showSidebarLoginSheet = false },
+                onWebLogin = {
+                    showSidebarLoginSheet = false
+                    showSidebarWebLogin = true
+                },
+                onLoginSuccess = { cookies ->
+                    showSidebarLoginSheet = false
+                    viewModel.handleLoginSuccess(cookies)
+                }
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showSidebarWebLogin,
+            enter = slideInVertically(uiTween(ScreenSlideDurationMs)) { it } + fadeIn(uiTween(ScreenSlideDurationMs)),
+            exit = slideOutVertically(uiTween(ScreenSlideDurationMs)) { it } + fadeOut(uiTween(ScreenSlideDurationMs))
+        ) {
+            WebViewLoginScreen(
+                onClose = { showSidebarWebLogin = false },
+                onLoginSuccess = { cookies ->
+                    showSidebarWebLogin = false
+                    viewModel.handleLoginSuccess(cookies)
                 }
             )
         }

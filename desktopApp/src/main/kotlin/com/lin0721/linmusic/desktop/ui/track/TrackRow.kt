@@ -1,5 +1,11 @@
 package com.lin0721.linmusic.desktop.ui.track
 
+import androidx.compose.material.icons.rounded.Extension
+import com.lin0721.linmusic.core.plugin.LocalPluginCommands
+import com.lin0721.linmusic.core.plugin.PluginMenuLocation
+import com.lin0721.linmusic.core.plugin.rememberPluginCommands
+import kotlinx.serialization.json.JsonObject
+import com.lin0721.linmusic.core.plugin.pluginSongArgs
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -77,6 +83,7 @@ import com.lin0721.linmusic.core.format.formatDuration
 import com.lin0721.linmusic.core.model.Artist
 import com.lin0721.linmusic.core.model.Track
 import com.lin0721.linmusic.core.source.MusicPlatform
+import com.lin0721.linmusic.core.ui.theme.densityScaled
 import com.lin0721.linmusic.core.ui.theme.themedShadow
 import com.lin0721.linmusic.desktop.ui.components.Cover
 import com.lin0721.linmusic.desktop.ui.components.DesktopMenu
@@ -214,7 +221,7 @@ fun TrackRow(
                         Modifier
                     }
                 )
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 12.dp, vertical = densityScaled(6.dp)),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (selection != null) {
@@ -371,6 +378,7 @@ internal fun TrackMenu(
     onDismiss: () -> Unit
 ) {
     val navigator = LocalDesktopNavigator.current
+    val pluginCommands = LocalPluginCommands.current
     val isLiked = track.id in actions.likedSongIds
     val artists = track.ar.filter { it.id > 0 }
     DesktopMenu(expanded = expanded, onDismiss = onDismiss, offset = offset) {
@@ -455,8 +463,19 @@ internal fun TrackMenu(
             })
         }
         actions.extraMenuItems?.invoke(this, track, onDismiss)
+        val pluginItems = rememberPluginCommands(PluginMenuLocation.SONG)
+        if (pluginItems.isNotEmpty()) MenuDivider()
+        pluginItems.forEach { item ->
+            MenuItem(item.title, icon = Icons.Rounded.Extension, onClick = {
+                onDismiss()
+                pluginCommands?.run(item, track.toPluginArgs())
+            })
+        }
     }
 }
+
+private fun Track.toPluginArgs(): JsonObject =
+    pluginSongArgs(id, name, ar.joinToString(" / ") { it.name }, al.name, al.picUrl)
 
 private val LinkStyles: TextLinkStyles @Composable @ReadOnlyComposable get() = TextLinkStyles(hoveredStyle = SpanStyle(color = DesktopColors.TextPrimary, textDecoration = TextDecoration.Underline))
 

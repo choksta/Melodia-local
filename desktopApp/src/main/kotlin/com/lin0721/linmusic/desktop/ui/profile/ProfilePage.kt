@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import com.lin0721.linmusic.core.format.formatCompactCount
 import com.lin0721.linmusic.core.player.PlaybackController
 import com.lin0721.linmusic.core.player.QueueItem
+import com.lin0721.linmusic.core.ui.theme.paneBackdrop
 import com.lin0721.linmusic.desktop.ui.artist.TabBar
 import com.lin0721.linmusic.desktop.ui.components.Cover
 import com.lin0721.linmusic.desktop.ui.components.HoverScrollbarBox
@@ -59,7 +60,7 @@ import com.lin0721.linmusic.desktop.ui.components.onDoubleClick
 import com.lin0721.linmusic.desktop.ui.components.uiSpring
 import com.lin0721.linmusic.desktop.ui.palette.FallbackCoverPalette
 import com.lin0721.linmusic.desktop.ui.palette.extractCoverPaletteFromUrl
-import com.lin0721.linmusic.desktop.ui.palette.themedCoverBackground
+import com.lin0721.linmusic.desktop.ui.palette.headerCoverBackground
 import com.lin0721.linmusic.desktop.ui.shell.LocalDesktopNavigator
 import com.lin0721.linmusic.desktop.ui.theme.DesktopColors
 import com.lin0721.linmusic.feature.profile.domain.ProfileListenRankItem
@@ -119,7 +120,7 @@ private fun ProfileContent(
     LaunchedEffect(info.avatarUrl) {
         if (info.avatarUrl.isNotBlank()) heroBase = extractCoverPaletteFromUrl(info.avatarUrl).base
     }
-    val heroColor by animateColorAsState(themedCoverBackground(heroBase, HERO_DARKEN_FRACTION), uiSpring(), label = "profileHero")
+    val heroColor by animateColorAsState(headerCoverBackground(heroBase, HERO_DARKEN_FRACTION), uiSpring(), label = "profileHero")
 
     val playRank: (Int) -> Unit = { index ->
         val items = state.rankItems.map { QueueItem(it.songId, it.songName, it.artistName, it.albumCoverUrl) }
@@ -135,7 +136,7 @@ private fun ProfileContent(
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
                 item(key = "header") {
-                    Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(heroColor, DesktopColors.Pane)))) {
+                    Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(heroColor, DesktopColors.PageFill)))) {
                         ProfileHero(
                             state = state,
                             onFollowsClick = { navigator.openFollowList(info.uid, FollowListMode.FOLLOWS) },
@@ -161,7 +162,7 @@ private fun ProfileContent(
                         selected = state.selectedTab,
                         label = { if (it == TAB_PLAYLISTS) "歌单" else "听歌排行" },
                         onSelect = viewModel::selectTab,
-                        modifier = Modifier.fillMaxWidth().background(DesktopColors.Pane)
+                        modifier = Modifier.fillMaxWidth().paneBackdrop(DesktopColors.Pane)
                             .padding(horizontal = ContentPadding, vertical = 12.dp)
                     )
                 }

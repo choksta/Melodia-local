@@ -94,7 +94,7 @@ import com.lin0721.linmusic.desktop.ui.components.uiSpring
 import com.lin0721.linmusic.desktop.ui.components.uiTween
 import com.lin0721.linmusic.desktop.ui.palette.FallbackCoverPalette
 import com.lin0721.linmusic.desktop.ui.palette.extractCoverPaletteFromUrl
-import com.lin0721.linmusic.desktop.ui.palette.themedCoverBackground
+import com.lin0721.linmusic.desktop.ui.palette.headerCoverBackground
 import com.lin0721.linmusic.desktop.ui.playlist.ActionIcon
 import com.lin0721.linmusic.desktop.ui.playlist.PlayCircleButton
 import com.lin0721.linmusic.desktop.ui.playlist.PlaylistPill
@@ -220,7 +220,7 @@ fun LocalPlaylistPage(
         summary.coverUri?.let { heroBase = extractCoverPaletteFromUrl(it).base }
     }
     val heroColor by animateColorAsState(
-        themedCoverBackground(heroBase, HERO_DARKEN_FRACTION), uiSpring(), label = "localPlaylistHero"
+        headerCoverBackground(heroBase, HERO_DARKEN_FRACTION), uiSpring(), label = "localPlaylistHero"
     )
 
     val listState = rememberLazyListState()
@@ -242,7 +242,7 @@ fun LocalPlaylistPage(
             item(key = "header") {
                 Column(
                     Modifier.fillMaxWidth().onSizeChanged { headerHeightPx = it.height }
-                        .background(Brush.verticalGradient(listOf(heroColor, DesktopColors.Pane)))
+                        .background(Brush.verticalGradient(listOf(heroColor, DesktopColors.PageFill)))
                 ) {
                     Box(Modifier.onSizeChanged { heroHeightPx = it.height }) {
                         LocalPlaylistHero(summary, tracks, folders)

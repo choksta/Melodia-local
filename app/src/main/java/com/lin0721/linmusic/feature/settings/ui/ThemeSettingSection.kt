@@ -118,7 +118,8 @@ fun ThemeSettingSection(
                     lightAccent = lightAccent,
                     selected = settings.mode == mode,
                     onClick = { center ->
-                        switcher.switch(center, changesDarkness = mode.isDark(systemDark) != currentIsDark) { onModeChange(mode) }
+                        val changes = mode.isDark(systemDark) != currentIsDark
+                        switcher.switch(center, changesTheme = changes) { onModeChange(mode) }
                     },
                     modifier = Modifier.weight(1f)
                 )
@@ -221,7 +222,7 @@ private fun ModeCard(
 
 // 缩略图：窗口底色上一块面板，两条文字线与一枚主色药丸
 @Composable
-private fun ModeThumb(palette: MelodiaPalette, accent: Color, modifier: Modifier) {
+internal fun ModeThumb(palette: MelodiaPalette, accent: Color, modifier: Modifier) {
     Box(modifier = modifier.background(palette.windowBackground).padding(5.dp)) {
         Column(
             modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(4.dp)).background(palette.pane).padding(7.dp),

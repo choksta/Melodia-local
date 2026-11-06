@@ -25,9 +25,12 @@ import com.lin0721.linmusic.di.localMusicModule
 import com.lin0721.linmusic.di.lxPluginModule
 import com.lin0721.linmusic.di.networkModule
 import com.lin0721.linmusic.di.playerModule
+import com.lin0721.linmusic.di.pluginModule
 import com.lin0721.linmusic.di.recognitionModule
 import com.lin0721.linmusic.di.repositoryModule
 import com.lin0721.linmusic.di.sourceModule
+import com.lin0721.linmusic.core.plugin.PluginHostInfo
+import com.lin0721.linmusic.core.plugin.PluginRepository
 import com.lin0721.linmusic.di.updateModule
 import com.lin0721.linmusic.core.update.UpdateChecker
 import com.lin0721.linmusic.core.source.LxPluginManager
@@ -43,6 +46,7 @@ import org.koin.android.ext.koin.androidLogger
 import org.koin.android.ext.android.inject
 import org.koin.core.context.startKoin
 import org.koin.core.logger.Level
+import java.io.File
 
 class MelodiaApplication : Application() {
 
@@ -79,18 +83,20 @@ class MelodiaApplication : Application() {
         // 在后台线程强制触发 DiskLruCache.initialize()，避免首次图片加载时锁竞争
         Thread { imageLoader.diskCache }.start()
 
+        PluginHostInfo.appVersion = BuildConfig.VERSION_NAME.takeUnless { BuildConfig.DEBUG }
         startKoin {
             androidLogger(if (BuildConfig.DEBUG) Level.DEBUG else Level.ERROR)
             androidContext(this@MelodiaApplication)
             modules(
                 networkModule, localModule, repositoryModule, sourceModule, lxPluginModule, viewModelModule, playerModule,
-                downloadModule, localMusicModule, recognitionModule,
                 // 更新源指向自己的 fork：装的是本地构建出来的包，查上游也装不上
                 updateModule(
                     currentVersionCode = BuildConfig.VERSION_CODE,
                     owner = UPDATE_OWNER,
                     repo = UPDATE_REPO
-                )
+                ),
+                downloadModule, localMusicModule, recognitionModule,
+                pluginModule { File(androidContext().filesDir, "plugins") }
             )
         }
 
@@ -105,6 +111,12 @@ class MelodiaApplication : Application() {
             delay(AUTO_CHECK_DELAY_MS)
             runCatching { updateChecker.checkForUpdate(manual = false) }
                 .onFailure { AppLogger.e("MelodiaApplication", "自动检查更新失败", it) }
+        }
+
+        // 异步拉起已启用的插件
+        val pluginRepository: PluginRepository by inject()
+        CoroutineScope(Dispatchers.IO).launch {
+            pluginRepository.warmUp()
         }
 
         // 初始化 WorkManager 并注入自定义 WorkerFactory

@@ -11,6 +11,7 @@ import com.lin0721.linmusic.core.preferences.ThemeMode
 import com.lin0721.linmusic.core.preferences.ThemeSettings
 import com.lin0721.linmusic.core.preferences.UiScale
 import com.lin0721.linmusic.core.source.SourcePreferences
+import com.lin0721.linmusic.core.ui.skin.SkinRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +21,8 @@ import kotlinx.coroutines.launch
 // 各端共有的本地设置项；平台专属的设置由各端自己的 ViewModel 负责
 class CommonSettingsViewModel(
     private val settingsPreferences: SettingsPreferences,
-    private val sourcePreferences: SourcePreferences
+    private val sourcePreferences: SourcePreferences,
+    val skins: SkinRepository
 ) : ViewModel() {
 
     private fun <T> Flow<T>.asState(initial: T): StateFlow<T> = stateIn(
@@ -36,6 +38,9 @@ class CommonSettingsViewModel(
     val wifiQuality = settingsPreferences.wifiQuality.asState("lossless")
     val crossfadeEnabled = settingsPreferences.crossfadeEnabled.asState(false)
     val crossfadeDurationMs = settingsPreferences.crossfadeDurationMs.asState(CrossfadePolicy.DEFAULT_DURATION_MS)
+    val smartCrossfadeEnabled = settingsPreferences.smartCrossfadeEnabled.asState(false)
+    val loudnessNormalizationEnabled = settingsPreferences.loudnessNormalizationEnabled.asState(false)
+    val exclusiveOutput = settingsPreferences.exclusiveOutput.asState(false)
     val uiScalePercent = settingsPreferences.uiScalePercent.asState(UiScale.DEFAULT_PERCENT)
     val uiAnimationsEnabled = settingsPreferences.uiAnimationsEnabled.asState(true)
     val themeSettings = settingsPreferences.themeSettings.asState(ThemeSettings())
@@ -43,6 +48,7 @@ class CommonSettingsViewModel(
     val searchAggregationEnabled = sourcePreferences.searchAggregationEnabled.asState(false)
     val fallbackEnabled = sourcePreferences.fallbackEnabled.asState(false)
     val communityPriority = sourcePreferences.communityPriority.asState(false)
+    val pluginBeforeOfficial = sourcePreferences.pluginBeforeOfficial.asState(false)
     val unmRemoteFallbackEnabled = sourcePreferences.unmRemoteFallbackEnabled.asState(false)
     val unmServerUrl = sourcePreferences.unmServerUrl.asState("")
     val unmAutoMatch = sourcePreferences.unmAutoMatch.asState(true)
@@ -68,6 +74,12 @@ class CommonSettingsViewModel(
 
     fun updateCrossfadeDurationMs(durationMs: Int) = launchSave { settingsPreferences.saveCrossfadeDurationMs(durationMs) }
 
+    fun updateSmartCrossfadeEnabled(enabled: Boolean) = launchSave { settingsPreferences.saveSmartCrossfadeEnabled(enabled) }
+
+    fun updateLoudnessNormalizationEnabled(enabled: Boolean) = launchSave { settingsPreferences.saveLoudnessNormalizationEnabled(enabled) }
+
+    fun updateExclusiveOutput(enabled: Boolean) = launchSave { settingsPreferences.saveExclusiveOutput(enabled) }
+
     fun updateUiScalePercent(percent: Int) = launchSave { settingsPreferences.saveUiScalePercent(percent) }
 
     fun updateUiAnimationsEnabled(enabled: Boolean) = launchSave { settingsPreferences.saveUiAnimationsEnabled(enabled) }
@@ -83,6 +95,7 @@ class CommonSettingsViewModel(
     fun updateFallbackEnabled(enabled: Boolean) = launchSave { sourcePreferences.saveFallbackEnabled(enabled) }
 
     fun updateCommunityPriority(enabled: Boolean) = launchSave { sourcePreferences.saveCommunityPriority(enabled) }
+    fun updatePluginBeforeOfficial(enabled: Boolean) = launchSave { sourcePreferences.savePluginBeforeOfficial(enabled) }
 
     fun updateUnmRemoteFallbackEnabled(enabled: Boolean) = launchSave { sourcePreferences.saveUnmRemoteFallbackEnabled(enabled) }
 

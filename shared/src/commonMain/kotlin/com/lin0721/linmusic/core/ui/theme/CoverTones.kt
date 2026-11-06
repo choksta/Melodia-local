@@ -1,7 +1,12 @@
 package com.lin0721.linmusic.core.ui.theme
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
+import com.lin0721.linmusic.core.ui.skin.SkinContrast
+import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 
@@ -14,9 +19,18 @@ private const val IMMERSIVE_MAX_SATURATION = 0.6f
 private const val HEADER_TINT_LUMINANCE = 0.7f
 private const val HEADER_TINT_MAX_SATURATION = 0.6f
 private const val ACCENT_TEXT_MIN_CONTRAST = 4.5f
+// 浅色歌词页整页淡底与当前行深色调；深色调在头部浅调与淡底上对比度均不低于 4.5
+private const val COVER_WASH_LUMINANCE = 0.86f
+private const val COVER_WASH_MAX_SATURATION = 0.35f
+private const val COVER_DEEP_LUMINANCE = 0.1f
 // 低于此饱和度视为灰色封面，不强行提饱和，避免灰图染出色偏
 private const val ACHROMATIC_SATURATION = 0.08f
 private const val LUMINANCE_SEARCH_STEPS = 20
+// 有色铺底上的强调色与次要文字门槛（WCAG AA 正文）
+private const val ON_COVER_MIN_CONTRAST = 4.5f
+private const val ON_COVER_TERTIARY_MIN_CONTRAST = 3f
+private const val ON_COVER_SECONDARY_ALPHA = 0.75f
+private const val ON_COVER_GRID = 50f
 
 // hue 取值 0..360，saturation 与 lightness 取值 0..1
 data class Hsl(val hue: Float, val saturation: Float, val lightness: Float) {
@@ -60,6 +74,17 @@ fun coverHeaderTint(base: Color): Color {
     return Hsl(hsl.hue, saturation, high).toColor()
 }
 
+// 浅色歌词页整页铺底：同色相极淡色，压低饱和度避免大面积刺眼
+fun coverWashTint(base: Color): Color {
+    val hsl = base.toHsl()
+    val saturation = if (hsl.saturation < ACHROMATIC_SATURATION) hsl.saturation else min(hsl.saturation, COVER_WASH_MAX_SATURATION)
+    return Hsl(hsl.hue, saturation, lightnessAtLuminance(hsl.hue, saturation, COVER_WASH_LUMINANCE)).toColor()
+}
+
+// 浅色歌词页当前行：同色相深色调；灰色封面没有可用色相，返回 null 由调用方回退主色
+fun coverDeepTone(base: Color): Color? =
+    if (base.toHsl().saturation < ACHROMATIC_SATURATION) null else toneAtLuminance(base, COVER_DEEP_LUMINANCE)
+
 // 主色在浅底上作文字时的可读版本：对比度不足 4.5 时保持色相与饱和度，降低明度直到达标
 fun accentTextOn(accent: Color, background: Color): Color {
     if (contrastRatio(accent, background) >= ACCENT_TEXT_MIN_CONTRAST) return accent
@@ -73,6 +98,67 @@ fun accentTextOn(accent: Color, background: Color): Color {
     return Hsl(hsl.hue, hsl.saturation, low).toColor()
 }
 
+// 有色铺底上的前景色；contentSecondary 为主文字降透明度，textSecondary / textTertiary 为色板对应项调整后的版本
+@Immutable
+data class OnCoverColors(
+    val content: Color,
+    val contentSecondary: Color,
+    val accent: Color,
+    val textSecondary: Color,
+    val textTertiary: Color
+)
+
+// 前景需对 backgrounds 中每个不透明铺底都达标；为空时不调整
+fun onCoverColors(
+    backgrounds: List<Color>,
+    content: Color,
+    accent: Color,
+    textSecondary: Color,
+    textTertiary: Color
+): OnCoverColors {
+    if (backgrounds.isEmpty()) {
+        return OnCoverColors(content, content.copy(alpha = ON_COVER_SECONDARY_ALPHA), accent.copy(alpha = 1f), textSecondary, textTertiary)
+    }
+    val brighten = content.luminance() >= 0.5f
+    return OnCoverColors(
+        content = content,
+        contentSecondary = onCoverSecondary(backgrounds, content),
+        accent = readableOn(accent, backgrounds, ON_COVER_MIN_CONTRAST, brighten),
+        textSecondary = readableOn(textSecondary, backgrounds, ON_COVER_MIN_CONTRAST, brighten),
+        textTertiary = readableOn(textTertiary, backgrounds, ON_COVER_TERTIARY_MIN_CONTRAST, brighten)
+    )
+}
+
+private fun readableOn(color: Color, backgrounds: List<Color>, min: Float, brighten: Boolean): Color {
+    val opaque = color.copy(alpha = 1f)
+    val fixed = SkinContrast.ensureContrast(opaque, backgrounds, min, brighten)
+    return if (fixed == opaque) color else snapLightness(fixed, brighten)
+}
+
+// 优先沿用原 75% 透明度，不达标时往不透明方向加
+private fun onCoverSecondary(backgrounds: List<Color>, content: Color): Color {
+    fun passes(alpha: Float) = backgrounds.all {
+        contrastRatio(content.copy(alpha = alpha).compositeOver(it), it) >= ON_COVER_MIN_CONTRAST
+    }
+    if (passes(ON_COVER_SECONDARY_ALPHA)) return content.copy(alpha = ON_COVER_SECONDARY_ALPHA)
+    if (!passes(1f)) return content.copy(alpha = 1f)
+    var low = ON_COVER_SECONDARY_ALPHA
+    var high = 1f
+    repeat(LUMINANCE_SEARCH_STEPS) {
+        val mid = (low + high) / 2f
+        if (passes(mid)) high = mid else low = mid
+    }
+    return content.copy(alpha = (ceil(high * ON_COVER_GRID) / ON_COVER_GRID).coerceAtMost(1f))
+}
+
+// 按网格向达标方向取整，切歌过渡时只跳几档，避免主题逐帧重建
+private fun snapLightness(color: Color, brighten: Boolean): Color {
+    if (color == Color.White || color == Color.Black) return color
+    val hsl = color.toHsl()
+    val snapped = if (brighten) ceil(hsl.lightness * ON_COVER_GRID) else floor(hsl.lightness * ON_COVER_GRID)
+    return hsl.copy(lightness = (snapped / ON_COVER_GRID).coerceIn(0f, 1f)).toColor()
+}
+
 private fun toneAtLuminance(base: Color, targetLuminance: Float): Color {
     val hsl = base.toHsl()
     val saturation = if (hsl.saturation < ACHROMATIC_SATURATION) {
@@ -80,12 +166,16 @@ private fun toneAtLuminance(base: Color, targetLuminance: Float): Color {
     } else {
         hsl.saturation.coerceIn(IMMERSIVE_MIN_SATURATION, IMMERSIVE_MAX_SATURATION)
     }
-    // 固定色相与饱和度时相对亮度随 lightness 单调递增，二分即可
+    return Hsl(hsl.hue, saturation, lightnessAtLuminance(hsl.hue, saturation, targetLuminance)).toColor()
+}
+
+// 固定色相与饱和度时相对亮度随 lightness 单调递增，二分即可
+private fun lightnessAtLuminance(hue: Float, saturation: Float, targetLuminance: Float): Float {
     var low = 0f
     var high = 1f
     repeat(LUMINANCE_SEARCH_STEPS) {
         val mid = (low + high) / 2f
-        if (Hsl(hsl.hue, saturation, mid).toColor().luminance() < targetLuminance) low = mid else high = mid
+        if (Hsl(hue, saturation, mid).toColor().luminance() < targetLuminance) low = mid else high = mid
     }
-    return Hsl(hsl.hue, saturation, (low + high) / 2f).toColor()
+    return (low + high) / 2f
 }

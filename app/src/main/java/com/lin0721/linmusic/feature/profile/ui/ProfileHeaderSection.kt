@@ -35,6 +35,7 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaColors
 import com.lin0721.linmusic.core.ui.theme.MelodiaPress
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.PillRadius
+import com.lin0721.linmusic.core.ui.theme.paneBackdrop
 import com.lin0721.linmusic.feature.profile.domain.ProfileUserInfo
 
 // 头部资料区（头像/昵称/等级/签名/统计/关注按钮），不含 Tab 栏——
@@ -50,7 +51,7 @@ fun ProfileHeaderInfo(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(MelodiaColors.Background)
+            .background(MelodiaColors.PageFill)
             .padding(horizontal = 20.dp, vertical = MelodiaSpacing.md)
     ) {
         // 用户资料行
@@ -87,13 +88,13 @@ fun ProfileHeaderInfo(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(PillRadius))
-                            .background(Color(0xFFE8B45C).copy(alpha = 0.14f))
+                            .background(MelodiaColors.Vip.copy(alpha = 0.14f))
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "Lv.${userInfo.level}",
-                            color = Color(0xFFE8B45C),
+                            color = MelodiaColors.Vip,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -221,7 +222,7 @@ fun ProfileTabBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MelodiaColors.Background)
+            .paneBackdrop(MelodiaColors.Background)
             .padding(horizontal = 20.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(28.dp)
     ) {

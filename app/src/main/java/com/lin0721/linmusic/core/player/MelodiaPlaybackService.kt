@@ -25,7 +25,11 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.AudioTrackAudioOutputProvider
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaNotification
@@ -45,6 +49,8 @@ import com.lin0721.linmusic.core.auth.UserPreferences
 import com.lin0721.linmusic.core.log.AppLogger
 import com.lin0721.linmusic.core.player.external.EXTRA_LYRIC_INFO
 import com.lin0721.linmusic.core.player.external.ExternalLyricCoordinator
+import com.lin0721.linmusic.core.player.usb.UsbAudioDeviceManager
+import com.lin0721.linmusic.core.player.usb.UsbAudioOutputProvider
 import com.lin0721.linmusic.core.preferences.SettingsPreferences
 import com.lin0721.linmusic.core.songlike.SongLikeRepository
 import kotlinx.coroutines.CoroutineScope
@@ -117,6 +123,7 @@ class MelodiaPlaybackService : MediaSessionService() {
     private var player: Player? = null
     private var crossfadePlayer: CrossfadePlayer? = null
     private var audioEffectController: AudioEffectController? = null
+    private var usbAudio: UsbAudioDeviceManager? = null
     private var mediaSession: MediaSession? = null
     private var sessionActivityPendingIntent: PendingIntent? = null
     private var currentCoverBitmap: Bitmap? = null
@@ -238,9 +245,18 @@ class MelodiaPlaybackService : MediaSessionService() {
         // 音效控制器要在播放器之前建好：渲染器工厂要用它给每个音频 sink 造处理器
         val effectController = AudioEffectController()
         audioEffectController = effectController
+
+        // USB 独占输出：设备插拔由它自己跟踪，拔出 DAC 时同样要暂停，避免改从扬声器外放
+        val usbAudio = UsbAudioDeviceManager(this).also { manager ->
+            manager.start()
+            manager.onDeviceDetached = { crossfadePlayer?.pause() }
+            this.usbAudio = manager
+        }
+
+        // 渲染器工厂同时挂两样：输出层先交给 USB 独占判断，sink 内再跑 PCM 均衡器
         // 音效跑在解码后的 PCM 上，不再依赖 audio session，也不需要预分配/固定 session：
         // session 那套是为了让系统 Equalizer 能在静音期插进音频通路，PCM 均衡器没这个约束
-        val renderersFactory = MelodiaRenderersFactory(this) { effectController.newProcessor() }
+        val renderersFactory = MelodiaRenderersFactory(this, usbAudio) { effectController.newProcessor() }
 
         // 耳机拔出 / 蓝牙断开时自动暂停，避免外放。
         // 不交给 ExoPlayer 自带的 becoming-noisy 处理：它只暂停被调用的那一台播放器，
@@ -260,7 +276,8 @@ class MelodiaPlaybackService : MediaSessionService() {
         val sessionPlayer = CrossfadePlayer(
             primary = primaryPlayer,
             secondary = secondaryPlayer,
-            audioAttributes = audioAttributes
+            audioAttributes = audioAttributes,
+            exclusiveVolume = usbAudio
         )
         sessionPlayer.setMetadataTransformer { base ->
             externalLyricCoordinator.applyToMediaMetadata(base.buildUpon(), base)
@@ -272,6 +289,9 @@ class MelodiaPlaybackService : MediaSessionService() {
             settingsPreferences.playWithOtherApps.collect { playWithOtherApps ->
                 sessionPlayer.setHandleAudioFocus(!playWithOtherApps)
             }
+        }
+        serviceScope.launch {
+            settingsPreferences.exclusiveOutput.collect { usbAudio.setEnabled(it) }
         }
         // 设置页已保证两者互斥，这里再兜底一次，避免淡化时两台播放器争用卸载通道
         serviceScope.launch {
@@ -465,6 +485,8 @@ class MelodiaPlaybackService : MediaSessionService() {
         crossfadePlayer?.release()
         crossfadePlayer = null
         player = null
+        usbAudio?.stop()
+        usbAudio = null
         super.onDestroy()
     }
 
@@ -766,6 +788,8 @@ class MelodiaPlaybackService : MediaSessionService() {
             MediaNotification.Provider.NotificationChannelInfo(PLAYBACK_CHANNEL_ID, PLAYBACK_CHANNEL_NAME)
     }
 }
+
+// 渲染器工厂定义见 MelodiaRenderersFactory.kt（那里同时接 USB 独占输出与 PCM 均衡器）
 
 // 音频卸载交给 DSP 解码；格式或设备不支持时 ExoPlayer 自动回退软件解码，播放中切换会重配音频输出
 @OptIn(UnstableApi::class)

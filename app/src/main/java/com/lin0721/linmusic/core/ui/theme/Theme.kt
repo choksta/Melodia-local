@@ -10,6 +10,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -19,11 +20,20 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.lin0721.linmusic.core.preferences.ThemeSettings
 import com.lin0721.linmusic.core.ui.interaction.MelodiaPressIndication
+import com.lin0721.linmusic.core.ui.skin.CoverGroup
+import com.lin0721.linmusic.core.ui.skin.LocalCoverPolicy
+import com.lin0721.linmusic.core.ui.skin.LocalImmersiveBasePalette
+import com.lin0721.linmusic.core.ui.skin.Skin
+import com.lin0721.linmusic.core.ui.skin.coverPolicy
+import com.lin0721.linmusic.core.ui.skin.immersiveBasePalette
+import com.lin0721.linmusic.core.ui.skin.resolveSkinPalette
+import com.lin0721.linmusic.core.ui.skin.withBackdrop
 
 // 深色错误态固定用品牌红，不随主色变化
 private val ErrorRed = Color(0xFFC20C0C)
@@ -33,17 +43,29 @@ private val ErrorRed = Color(0xFFC20C0C)
 @Composable
 fun MelodiaTheme(
     themeSettings: ThemeSettings = ThemeSettings(),
+    skin: Skin? = null,
+    backdropImage: ImageBitmap? = null,
     content: @Composable () -> Unit
 ) {
-    val palette = rememberMelodiaPalette(themeSettings)
+    val basePalette = rememberMelodiaPalette(themeSettings, skin)
+    val backdropHost = remember(backdropImage) { backdropImage?.let(::SkinBackdropHost) }
+    val palette = remember(basePalette, backdropHost, skin) {
+        if (backdropHost == null) basePalette else basePalette.withBackdrop(skin?.background)
+    }
     val colorScheme = remember(palette) { melodiaColorScheme(palette) }
+    val style = skin?.style ?: MelodiaStyle.Default
+    val typography = remember(style.font) { Typography.withFont(style.font) }
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = typography,
         shapes = MelodiaShapes
     ) {
         CompositionLocalProvider(
             LocalMelodiaPalette provides palette,
+            LocalMelodiaStyle provides style,
+            LocalSkinBackdrop provides backdropHost?.takeIf { palette.backdrop != null },
+            LocalCoverPolicy provides skin.coverPolicy(palette.isDark, backdropReady = backdropHost != null && palette.backdrop != null),
+            LocalImmersiveBasePalette provides remember(skin) { immersiveBasePalette(skin) },
             LocalIndication provides MelodiaPressIndication.Default,
             LocalRippleConfiguration provides null,
             content = content
@@ -51,20 +73,47 @@ fun MelodiaTheme(
     }
 }
 
-// 沉浸区（播放页等封面色铺底、白字）内部一律按深色主题取色，保留当前主色；浅色主题下由此切换，深色主题下原样透传
+// 沉浸区内按皮肤深色配色取色；base 为封面原色，透出背景图时传 null
 @Composable
-fun ImmersiveTheme(content: @Composable () -> Unit) {
-    val current = LocalMelodiaPalette.current
-    if (current.isDark) {
-        content()
-        return
+fun ImmersiveTheme(base: Color?, content: @Composable () -> Unit) {
+    val midTone = LocalImmersiveMidTone.current || !LocalMelodiaPalette.current.isDark
+    val text = LocalImmersiveBasePalette.current.textPrimary
+    // 不计光斑，否则强调色会被推成纯白
+    val backgrounds = remember(base, midTone, text) {
+        base?.let { listOf(immersiveColors(it, midTone, text).fill) }.orEmpty()
     }
-    val palette = remember(current.accent) { MelodiaPalettes.dark.withAccent(current.accent) }
+    ImmersiveTheme(backgrounds, content)
+}
+
+// backgrounds 为实际铺底色，主色与次要、辅助文字按其调到对比度达标；
+// 带上背景图参数，内部 playerBackdrop 才能画出背景
+@Composable
+fun ImmersiveTheme(backgrounds: List<Color>, content: @Composable () -> Unit) {
+    val current = LocalMelodiaPalette.current
+    val immersiveBase = LocalImmersiveBasePalette.current
+    val playerBackdrop = LocalCoverPolicy.current.isBackdrop(CoverGroup.PLAYER)
+    val midTone = LocalImmersiveMidTone.current || !current.isDark
+    val source = remember(current, immersiveBase, playerBackdrop) {
+        if (current.isDark) current else immersiveBase.copy(backdrop = if (playerBackdrop) current.backdrop else null)
+    }
+    val onCover = rememberOnCoverColors(backgrounds, source, current.accent)
+    val palette = remember(current, source, onCover) {
+        // 深色且无需调整时原样沿用，保留皮肤写的主色衍生项
+        if (current.isDark && onCover.accent == current.accent &&
+            onCover.textSecondary == current.textSecondary && onCover.textTertiary == current.textTertiary
+        ) {
+            current
+        } else {
+            val accented = if (current.isDark && onCover.accent == current.accent) source else source.withAccent(onCover.accent)
+            accented.copy(textSecondary = onCover.textSecondary, textTertiary = onCover.textTertiary)
+        }
+    }
     val colorScheme = remember(palette) { melodiaColorScheme(palette) }
-    MaterialTheme(colorScheme = colorScheme, typography = Typography, shapes = MelodiaShapes) {
+    MaterialTheme(colorScheme = colorScheme, typography = MaterialTheme.typography, shapes = MelodiaShapes) {
         CompositionLocalProvider(
             LocalMelodiaPalette provides palette,
-            LocalImmersiveMidTone provides true,
+            LocalImmersiveMidTone provides midTone,
+            LocalOnCoverColors provides onCover,
             content = content
         )
     }
@@ -121,7 +170,7 @@ private fun ColorScheme.withLightContainers(palette: MelodiaPalette): ColorSchem
 )
 
 @Composable
-fun rememberMelodiaPalette(themeSettings: ThemeSettings): MelodiaPalette {
+fun rememberMelodiaPalette(themeSettings: ThemeSettings, skin: Skin?): MelodiaPalette {
     val isDark = themeSettings.mode.isDark(isSystemInDarkTheme())
     val accentId = themeSettings.accentId(isDark)
     val customHex = themeSettings.customHex(isDark)
@@ -135,7 +184,28 @@ fun rememberMelodiaPalette(themeSettings: ThemeSettings): MelodiaPalette {
             dynamicLightColorScheme(context).primary
         }
     }
-    return remember(isDark, accentId, customHex, dynamicAccent) {
-        MelodiaPalettes.of(isDark).withAccent(ThemeAccents.resolve(accentId, customHex, isDark, dynamicAccent))
+    return remember(isDark, accentId, customHex, dynamicAccent, skin) {
+        resolveSkinPalette(isDark, accentId, customHex, skin, dynamicAccent)
     }
+}
+
+private fun Typography.withFont(font: ThemeFont): Typography {
+    val family = font.fontFamily ?: return this
+    return Typography(
+        displayLarge = displayLarge.copy(fontFamily = family),
+        displayMedium = displayMedium.copy(fontFamily = family),
+        displaySmall = displaySmall.copy(fontFamily = family),
+        headlineLarge = headlineLarge.copy(fontFamily = family),
+        headlineMedium = headlineMedium.copy(fontFamily = family),
+        headlineSmall = headlineSmall.copy(fontFamily = family),
+        titleLarge = titleLarge.copy(fontFamily = family),
+        titleMedium = titleMedium.copy(fontFamily = family),
+        titleSmall = titleSmall.copy(fontFamily = family),
+        bodyLarge = bodyLarge.copy(fontFamily = family),
+        bodyMedium = bodyMedium.copy(fontFamily = family),
+        bodySmall = bodySmall.copy(fontFamily = family),
+        labelLarge = labelLarge.copy(fontFamily = family),
+        labelMedium = labelMedium.copy(fontFamily = family),
+        labelSmall = labelSmall.copy(fontFamily = family)
+    )
 }

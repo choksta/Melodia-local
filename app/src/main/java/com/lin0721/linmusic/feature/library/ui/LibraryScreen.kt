@@ -34,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -150,18 +149,13 @@ fun LibraryScreen(
 
     val scope = rememberCoroutineScope()
 
-    val onAvatarClick: () -> Unit = {
-        if (userProfile != null) {
-            onOpenSidebar()
-        } else {
-            showLoginSheet = true
-        }
-    }
+    // 未登录也打开侧栏，侧栏里提供登录与设置入口
+    val onAvatarClick: () -> Unit = onOpenSidebar
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MelodiaColors.PageFill)
     ) {
         AnimatedContent(
             targetState = isReorderMode,
@@ -474,9 +468,9 @@ fun LibraryScreen(
                             .background(
                                 Brush.verticalGradient(
                                     colors = listOf(
-                                        Color.Black.copy(alpha = 0.85f * shadowStrength),
-                                        Color.Black.copy(alpha = 0.35f * shadowStrength),
-                                        Color.Transparent
+                                        MelodiaColors.ShadowSpot.copy(alpha = 0.85f * shadowStrength),
+                                        MelodiaColors.ShadowSpot.copy(alpha = 0.35f * shadowStrength),
+                                        MelodiaColors.ShadowSpot.copy(alpha = 0f)
                                     )
                                 )
                             )
@@ -729,7 +723,7 @@ private fun LibraryReorderView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MelodiaColors.PageFill)
             .statusBarsPadding()
     ) {
         Row(

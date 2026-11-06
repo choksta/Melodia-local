@@ -1,5 +1,14 @@
 package com.lin0721.linmusic.feature.player.ui
 
+import kotlinx.coroutines.flow.flowOf
+import com.lin0721.linmusic.core.preferences.PlayerCardEntries
+import com.lin0721.linmusic.core.plugin.LocalPluginCards
+import com.lin0721.linmusic.core.plugin.PlayerLayoutView
+import com.lin0721.linmusic.core.plugin.PlayerLayoutArea
+import com.lin0721.linmusic.core.plugin.LocalLayoutCoverColors
+import com.lin0721.linmusic.core.plugin.LocalLayoutEnvironment
+import com.lin0721.linmusic.core.plugin.LocalPlayerLayouts
+import com.lin0721.linmusic.core.plugin.LayoutNodeType
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -17,6 +26,9 @@ import com.lin0721.linmusic.core.comment.ui.CommentFloorScreen
 import com.lin0721.linmusic.core.comment.ui.CommentFullScreen
 import com.lin0721.linmusic.core.comment.ui.CommentsState
 import com.lin0721.linmusic.core.model.CommentItem
+import com.lin0721.linmusic.core.ui.skin.CoverGroup
+import com.lin0721.linmusic.core.ui.skin.isCoverBackdrop
+import com.lin0721.linmusic.core.ui.theme.ImmersiveTheme
 import com.lin0721.linmusic.core.ui.theme.LightStatusBarIconsWhile
 import com.lin0721.linmusic.core.ui.theme.LocalUiMotion
 import com.lin0721.linmusic.core.ui.theme.MelodiaColors
@@ -57,6 +69,7 @@ import com.lin0721.linmusic.core.ui.components.ArtistPickerSheet
 import com.lin0721.linmusic.core.ui.components.SwipeToSkipCover
 import com.lin0721.linmusic.core.share.ShareCardKind
 import com.lin0721.linmusic.core.ui.components.ToastManager
+import com.lin0721.linmusic.core.ui.theme.playerBackdrop
 import com.lin0721.linmusic.core.ui.theme.themedCoverBase
 import com.lin0721.linmusic.feature.player.share.LyricShareSheet
 import com.lin0721.linmusic.feature.fm.ui.FmViewModel
@@ -121,30 +134,40 @@ fun FullPlayerScreen(
     onLyricsFullScreenChange: (Boolean) -> Unit = {},
     onLyricsControlsVisibilityChange: (Boolean) -> Unit = {}
 ) {
-    FullPlayerScreenContent(
-        currentTrack = currentTrack,
-        isPlaying = isPlaying,
-        currentPositionProvider = currentPositionProvider,
-        duration = duration,
-        onTogglePlay = onTogglePlay,
-        onSeek = onSeek,
-        onClose = onClose,
-        isPlayerOpen = isPlayerOpen,
-        onArtistClick = onArtistClick,
-        onAlbumClick = onAlbumClick,
-        onPlaylistClick = onPlaylistClick,
-        onNavigateToProfile = onNavigateToProfile,
-        onDragClose = onDragClose,
-        fitCoverAboveNavigationBar = fitCoverAboveNavigationBar,
-        fitCoverToViewport = fitCoverToViewport,
-        contentMaxWidth = contentMaxWidth,
-        onToggleSidebarFullscreen = onToggleSidebarFullscreen,
-        isSidebarFullscreen = isSidebarFullscreen,
-        sidebarFullscreenProgress = sidebarFullscreenProgress,
-        fullscreenContentWidth = fullscreenContentWidth,
-        onLyricsFullScreenChange = onLyricsFullScreenChange,
-        onLyricsControlsVisibilityChange = onLyricsControlsVisibilityChange
-    )
+    // 播放区透出皮肤背景图时整页按沉浸区深色配色（深色遮罩配白字），浅色主题下也一样
+    val playerBackdrop = isCoverBackdrop(CoverGroup.PLAYER)
+    LightStatusBarIconsWhile(isPlayerOpen && playerBackdrop && onToggleSidebarFullscreen == null)
+    PlayerTintScope(playerBackdrop) {
+        FullPlayerScreenContent(
+            currentTrack = currentTrack,
+            isPlaying = isPlaying,
+            currentPositionProvider = currentPositionProvider,
+            duration = duration,
+            onTogglePlay = onTogglePlay,
+            onSeek = onSeek,
+            onClose = onClose,
+            isPlayerOpen = isPlayerOpen,
+            onArtistClick = onArtistClick,
+            onAlbumClick = onAlbumClick,
+            onPlaylistClick = onPlaylistClick,
+            onNavigateToProfile = onNavigateToProfile,
+            onDragClose = onDragClose,
+            fitCoverAboveNavigationBar = fitCoverAboveNavigationBar,
+            fitCoverToViewport = fitCoverToViewport,
+            contentMaxWidth = contentMaxWidth,
+            onToggleSidebarFullscreen = onToggleSidebarFullscreen,
+            isSidebarFullscreen = isSidebarFullscreen,
+            sidebarFullscreenProgress = sidebarFullscreenProgress,
+            fullscreenContentWidth = fullscreenContentWidth,
+            onLyricsFullScreenChange = onLyricsFullScreenChange,
+            onLyricsControlsVisibilityChange = onLyricsControlsVisibilityChange
+        )
+    }
+}
+
+@Composable
+private fun PlayerTintScope(immersive: Boolean, content: @Composable () -> Unit) {
+    if (immersive) ImmersiveTheme(base = null, content = content) else content()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -293,6 +316,14 @@ private fun FullPlayerScreenContent(
     // 播客节目没有歌词、歌曲评论与歌手专辑信息，信息卡与小歌词整体不展示
     val storedCardLayout by viewModel.fullPlayerCardLayout.collectAsStateWithLifecycle()
     val cardLayout = if (podcast.isPodcast) emptyList() else storedCardLayout
+    val pluginCards = LocalPluginCards.current
+    val storedCardEntries by (pluginCards?.source?.entries ?: remember { flowOf(emptyList()) })
+        .collectAsStateWithLifecycle(emptyList())
+    val cardEntries = when {
+        podcast.isPodcast -> emptyList()
+        storedCardEntries.isEmpty() -> PlayerCardEntries.merge(null, emptyList())
+        else -> storedCardEntries
+    }
     val storedShowMiniLyric by viewModel.showMiniLyric.collectAsStateWithLifecycle()
     val showMiniLyric = storedShowMiniLyric && !podcast.isPodcast
     val connectedDevice = rememberCurrentOutputDevice()
@@ -404,14 +435,7 @@ private fun FullPlayerScreenContent(
 
     val title = currentTrack.mediaMetadata.title?.toString() ?: ""
     val artist = currentTrack.mediaMetadata.artist?.toString() ?: ""
-    val showPlaybackQuality by viewModel.showPlaybackQuality.collectAsStateWithLifecycle()
-    val playbackLevel by viewModel.playerManager.playbackLevel.collectAsStateWithLifecycle()
-    // 档位按 songId 绑定，切歌瞬间旧歌的档位不会串到新歌上
-    val qualityLabel = if (showPlaybackQuality && !podcast.isPodcast) {
-        playbackLevel
-            ?.takeIf { it.songId.toString() == currentTrack.mediaId }
-            ?.let { getQualityBadgeLabel(it.level) }
-    } else null
+    val qualityLabel = rememberPlaybackQualityLabel(viewModel, currentTrack.mediaId, podcast.isPodcast)
     val rawCoverUrl = normalizeFullPlayerCoverUrl(
         currentTrack.mediaMetadata.artworkUri?.toString().orEmpty()
     )
@@ -471,9 +495,16 @@ private fun FullPlayerScreenContent(
     val scrollMetrics = rememberFullPlayerScrollMetrics(listState)
     val density = LocalDensity.current
     val navigationBarBottomPadding = melodiaNavigationBarBottomPadding()
+    val pluginLayouts = LocalPlayerLayouts.current
+    val pluginFullLayout = pluginLayouts[PlayerLayoutArea.ANDROID_FULL_PLAYER]
+    val pluginWideLayout = pluginLayouts[PlayerLayoutArea.ANDROID_FULL_PLAYER_WIDE]
+    val pluginLyricsLayout = pluginLayouts[PlayerLayoutArea.ANDROID_LYRICS]
+    // 插件关掉卡片流时首屏就是整页
+    val showInfoCards = pluginFullLayout?.frame?.cards != false
     val coverFitInsetPx = rememberCoverFitInsetPx(
         listState = listState,
-        enabled = fitCoverToViewport || fitCoverAboveNavigationBar,
+        // 插件布局的首屏高度固定为一屏，不存在需要缩封面的情况
+        enabled = pluginFullLayout == null && (fitCoverToViewport || fitCoverAboveNavigationBar),
         bottomReservePx = if (fitCoverAboveNavigationBar) with(density) { navigationBarBottomPadding.toPx() } else 0f
     )
     val coverExtraInset = with(density) { coverFitInsetPx.toDp() }
@@ -610,6 +641,62 @@ private fun FullPlayerScreenContent(
         }
     }
 
+    val pluginParts = if (pluginFullLayout != null || pluginWideLayout != null || pluginLyricsLayout != null) {
+        FullPlayerLayoutParts(
+            title = displayedTitle,
+            artist = displayedArtist,
+            songState = songDetailState,
+            podcast = podcast,
+            colors = colors,
+            coverUrl = coverUrl,
+            previousCoverUrl = previousCoverUrl,
+            nextCoverUrl = nextCoverUrl,
+            currentKey = currentTrack.mediaId,
+            previousKey = previousQueueItem?.songId?.toString(),
+            nextKey = nextQueueItem?.songId?.toString(),
+            currentLyricIndex = currentLyricIndex,
+            isPlaying = isPlaying,
+            playWhenReady = playWhenReady,
+            currentPositionProvider = currentPositionProvider,
+            duration = duration,
+            playMode = playMode,
+            animateLyricsMesh = isPlaying && !isLyricsFullScreen,
+            connectedDevice = connectedDevice,
+            qualityLabel = qualityLabel,
+            onToggleLike = viewModel::toggleLike,
+            onToggleSubscribe = viewModel::toggleSubscribe,
+            onArtistClick = openSongArtist,
+            onAlbumClick = openSongAlbum,
+            onMiniLyricClick = if (showInfoCards) scrollToLyricsCard else ({ isLyricsFullScreen = true }),
+            onSeek = viewModel::seekToTime,
+            onTogglePlay = onTogglePlay,
+            onPlayNext = viewModel.playerManager::playNext,
+            onPlayPrevious = viewModel.playerManager::playPrevious,
+            onCancelSkip = viewModel.playerManager::cancelPendingSkip,
+            onToggleShuffle = viewModel.playerManager::toggleShuffle,
+            onToggleRepeat = viewModel.playerManager::toggleRepeat,
+            onOutputDeviceClick = { showOutputDeviceSheet = true },
+            onQueueClick = { showQueueSheet = true },
+            onShareClick = { shareCurrentSong() },
+            onMoreClick = { showMoreOptionsSheet = true },
+            onOpenFullScreenLyrics = { isLyricsFullScreen = true },
+            onClose = onClose,
+            onToggleSidebarFullscreen = onToggleSidebarFullscreen,
+            isSidebarFullscreen = isSidebarFullscreen,
+            playContext = playContext,
+            podcastRadioName = podcast.radioName,
+            onPlaylistClick = openPlaylistSource,
+            activeLyricIndices = activeLyricIndices,
+            lyricPositionProvider = lyricPositionProvider,
+            lyricsHighlightColor = if (MelodiaColors.IsDark) colors.textHighlight else MelodiaColors.TextTertiary,
+            sleepTimerActive = sleepTimerRemaining > 0L,
+            onSleepTimerClick = { showTimerSheet = true },
+            onCommentsClick = { showCommentsSheet = true }
+        )
+    } else {
+        null
+    }
+
     val nestedScrollConnection = rememberFullPlayerNestedScrollConnection(
         listState = listState,
         offsetYState = offsetYState,
@@ -627,7 +714,13 @@ private fun FullPlayerScreenContent(
                 translationY = offsetY
             }
             .clip(RoundedCornerShape(topStart = topCornerRadius, topEnd = topCornerRadius))
-            .background(MaterialTheme.colorScheme.background)
+            .then(
+                if (isCoverBackdrop(CoverGroup.PLAYER)) {
+                    Modifier.playerBackdrop(MaterialTheme.colorScheme.background)
+                } else {
+                    Modifier.background(MaterialTheme.colorScheme.background)
+                }
+            )
     ) {
         PlayerBackdrop(
             base = colors.base,
@@ -679,10 +772,23 @@ private fun FullPlayerScreenContent(
                         start = startInset,
                         end = endInset,
                         top = melodiaStatusBarTopPadding(),
-                        bottom = (if (allCardsHidden) MelodiaSpacing.md else 80.dp) + melodiaNavigationBarBottomPadding()
+                        bottom = (if (allCardsHidden || !showInfoCards) MelodiaSpacing.md else 80.dp) + melodiaNavigationBarBottomPadding()
                     )
                 ) {
-                    fullPlayerPlaybackSection(
+                    if (pluginFullLayout != null && pluginParts != null) {
+                        fullPlayerPluginSection(pluginFullLayout, pluginParts, isLandscape) { barModifier ->
+                            FullPlayerSourceBar(
+                                playContext = playContext,
+                                podcastRadioName = podcast.radioName,
+                                onClose = onClose,
+                                onMoreClick = { showMoreOptionsSheet = true },
+                                onToggleSidebarFullscreen = onToggleSidebarFullscreen,
+                                isSidebarFullscreen = isSidebarFullscreen,
+                                onPlaylistClick = openPlaylistSource,
+                                modifier = barModifier.padding(horizontal = MelodiaSpacing.lg)
+                            )
+                        }
+                    } else fullPlayerPlaybackSection(
                         songState = songDetailState,
                         colors = colors,
                         coverUrl = coverUrl,
@@ -736,14 +842,20 @@ private fun FullPlayerScreenContent(
                         fillTail = fillTail
                     )
 
-                    fullPlayerInfoSection(
+                    if (showInfoCards) fullPlayerInfoSection(
                         songState = songDetailState,
                         colors = colors,
                         commentsState = commentsState,
                         currentLyricIndex = currentLyricIndex,
                         // 全屏歌词盖住播放页时歌词卡不可见，光斑无需游走
                         animateLyricsMesh = isPlaying && !isLyricsFullScreen,
-                        cardLayout = cardLayout,
+                        // 插件布局已放了歌词卡时，下方列表不再重复
+                        cardLayout = if (pluginFullLayout?.contains(LayoutNodeType.LYRICS_CARD) == true) {
+                            cardLayout.filter { it.card != FullPlayerCard.LYRICS }
+                        } else {
+                            cardLayout
+                        },
+                        cardEntries = cardEntries,
                         onOpenFullScreenLyrics = { isLyricsFullScreen = true },
                         onCommentsClick = { showCommentsSheet = true },
                         onRetryComments = viewModel::retryComments,
@@ -759,7 +871,7 @@ private fun FullPlayerScreenContent(
                     onClose = onClose,
                     title = title,
                     artist = artist,
-                    showTitle = scrollMetrics.showTitleInBar,
+                    showTitle = scrollMetrics.showTitleInBar && showInfoCards,
                     isPlaying = isPlaying,
                     onTogglePlay = onTogglePlay,
                     isLiked = if (podcast.isPodcast) podcast.subscribed else songDetailState.isLiked,
@@ -890,12 +1002,30 @@ private fun FullPlayerScreenContent(
                 onLyricClick = { line -> viewModel.seekToTime(line.timeMs) },
                 onSeek = viewModel::seekToTime,
                 onLyricsVisibleChange = { isWideLyricsVisible = it },
+                leftFraction = pluginWideLayout?.frame?.split,
+                pluginLeftColumn = if (pluginWideLayout != null && pluginParts != null) {
+                    {
+                        BoxWithConstraints(Modifier.fillMaxSize()) {
+                            CompositionLocalProvider(
+                                LocalLayoutCoverColors provides pluginParts.coverColors,
+                                LocalLayoutEnvironment provides pluginParts.environment(pluginWideLayout.pluginId)
+                            ) {
+                                PlayerLayoutView(pluginWideLayout.select(maxWidth.value, isLandscape), Modifier.fillMaxSize(), pluginParts.binding::prepare) { node, nodeModifier ->
+                                    pluginParts.Component(node, nodeModifier)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    null
+                },
                 infoCards = {
                     fullPlayerInfoGrid(
                         songState = songDetailState,
                         colors = colors,
                         commentsState = commentsState,
                         cardLayout = cardLayout,
+                        cardEntries = cardEntries,
                         onCommentsClick = { showCommentsSheet = true },
                         onRetryComments = viewModel::retryComments,
                         onFollowArtistClick = { artistId -> viewModel.toggleArtistFollow(artistId) },
@@ -936,7 +1066,12 @@ private fun FullPlayerScreenContent(
             onPlayPrevious = viewModel.playerManager::playPrevious,
             onToggleShuffle = viewModel.playerManager::toggleShuffle,
             onToggleRepeat = viewModel.playerManager::toggleRepeat,
-            onMoreClick = { showMoreOptionsSheet = true }
+            onMoreClick = { showMoreOptionsSheet = true },
+            pluginContent = if (pluginLyricsLayout != null && pluginParts != null) {
+                { slots -> LyricsPagePluginContent(pluginLyricsLayout, pluginParts, isLandscape, slots) }
+            } else {
+                null
+            }
         )
 
         if (showShareCard) {
@@ -1105,8 +1240,8 @@ private fun FullPlayerScreenContent(
 
         if (showCardEditorSheet) {
             FullPlayerCardEditorSheet(
-                layout = cardLayout,
-                onLayoutChange = viewModel::saveFullPlayerCardLayout,
+                layout = cardEntries,
+                onLayoutChange = { entries -> coroutineScope.launch { pluginCards?.source?.save(entries) } },
                 onDismiss = { showCardEditorSheet = false }
             )
         }
@@ -1225,4 +1360,13 @@ private fun FullPlayerCommentFloorSheet(
         onRetry = { (floorState as? CommentFloorState.Success)?.ownerComment?.let(viewModel::openCommentFloor) },
         onUserClick = onUserClick
     )
+}
+
+// 当前歌曲的实际音质短标签；档位按 songId 绑定，切歌瞬间旧歌的档位不会串到新歌上
+@Composable
+fun rememberPlaybackQualityLabel(viewModel: PlayerViewModel, mediaId: String, isPodcast: Boolean): String? {
+    val showPlaybackQuality by viewModel.showPlaybackQuality.collectAsStateWithLifecycle()
+    val playbackLevel by viewModel.playerManager.playbackLevel.collectAsStateWithLifecycle()
+    if (!showPlaybackQuality || isPodcast) return null
+    return playbackLevel?.takeIf { it.songId.toString() == mediaId }?.let { getQualityBadgeLabel(it.level) }
 }

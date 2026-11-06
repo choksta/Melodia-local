@@ -1,5 +1,6 @@
 package com.lin0721.linmusic.desktop.ui.playlist
 
+import com.lin0721.linmusic.core.plugin.isPluginCollectionId
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -99,6 +100,7 @@ import com.lin0721.linmusic.core.model.PlaylistDetail
 import com.lin0721.linmusic.core.model.Track
 import com.lin0721.linmusic.core.model.isLikedSongsPlaylist
 import com.lin0721.linmusic.core.player.PlaybackController
+import com.lin0721.linmusic.core.ui.theme.paneBackdrop
 import com.lin0721.linmusic.core.userplaylist.UserPlaylist
 import com.lin0721.linmusic.desktop.ui.comments.asCommentsHost
 import com.lin0721.linmusic.desktop.ui.components.Cover
@@ -122,7 +124,7 @@ import com.lin0721.linmusic.desktop.ui.library.MenuOption
 import com.lin0721.linmusic.desktop.ui.library.SEARCH_ANIMATION_MS
 import com.lin0721.linmusic.desktop.ui.palette.FallbackCoverPalette
 import com.lin0721.linmusic.desktop.ui.palette.extractCoverPaletteFromUrl
-import com.lin0721.linmusic.desktop.ui.palette.themedCoverBackground
+import com.lin0721.linmusic.desktop.ui.palette.headerCoverBackground
 import com.lin0721.linmusic.desktop.ui.player.rememberQueueReorderState
 import com.lin0721.linmusic.desktop.ui.shell.LocalDesktopNavigator
 import com.lin0721.linmusic.desktop.ui.theme.DesktopColors
@@ -509,7 +511,7 @@ private fun PlaylistContent(
     LaunchedEffect(playlist.coverImgUrl) {
         if (playlist.coverImgUrl.isNotBlank()) heroBase = extractCoverPaletteFromUrl(playlist.coverImgUrl).base
     }
-    val heroColor by animateColorAsState(themedCoverBackground(heroBase, HERO_DARKEN_FRACTION), uiSpring(), label = "playlistHero")
+    val heroColor by animateColorAsState(headerCoverBackground(heroBase, HERO_DARKEN_FRACTION), uiSpring(), label = "playlistHero")
 
     val density = LocalDensity.current
     val barHeightPx = with(density) { StickyBarHeight.roundToPx() }
@@ -545,7 +547,7 @@ private fun PlaylistContent(
             item(key = "header") {
                 Column(
                     Modifier.fillMaxWidth().onSizeChanged { headerHeightPx = it.height }
-                        .background(Brush.verticalGradient(listOf(heroColor, DesktopColors.Pane)))
+                        .background(Brush.verticalGradient(listOf(heroColor, DesktopColors.PageFill)))
                 ) {
                     Box(Modifier.onSizeChanged { heroHeightPx = it.height }) {
                         PlaylistHero(playlist, isAlbum, count, totalMs)
@@ -579,6 +581,7 @@ private fun PlaylistContent(
                         onImportTo = { target -> viewModel.importAllTracksTo(target.id) },
                         onCreateImport = { dialogState.showCreateImport = true },
                         canCopyLink = playlist.id > 0,
+                        canDownload = !isPluginCollectionId(playlist.id),
                         onCopyLink = {
                             navigator.showMessage(if (copyPlaylistLink(isAlbum, playlist.id)) "已复制链接" else "复制失败")
                         },
@@ -607,7 +610,7 @@ private fun PlaylistContent(
                         }
                     }
                 ) {
-                    Column(Modifier.background(DesktopColors.Pane)) {
+                    Column(Modifier.paneBackdrop(DesktopColors.Pane)) {
                         if (selection.active) {
                             val shownIds = shown.map { it.id }
                             TrackSelectionBar(
@@ -744,6 +747,7 @@ private fun PlaylistHero(playlist: PlaylistDetail, isAlbum: Boolean, count: Int,
     val typeLabel = when {
         playlist.id == DAILY_RECOMMEND_ID -> "为你推荐"
         isAlbum -> "专辑"
+        isPluginCollectionId(playlist.id) -> "歌单"
         playlist.privacy == PRIVATE_PLAYLIST -> "隐私歌单"
         else -> "公开歌单"
     }
@@ -769,7 +773,7 @@ private fun PlaylistHero(playlist: PlaylistDetail, isAlbum: Boolean, count: Int,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(vertical = 4.dp)
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            if (owner.isNotBlank() || !avatarUrl.isNullOrBlank()) {
                 Row(
                     Modifier.clip(RoundedCornerShape(4.dp)).then(
                         if (creatorId != null) {
@@ -784,12 +788,26 @@ private fun PlaylistHero(playlist: PlaylistDetail, isAlbum: Boolean, count: Int,
                         Cover(avatarUrl, 24.dp, shape = CircleShape, modifier = Modifier.padding(end = 8.dp))
                     }
                     if (owner.isNotBlank()) {
-                        Text(owner, color = DesktopColors.TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            owner,
+                            color = DesktopColors.TextPrimary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
                     }
                 }
-                if (owner.isNotBlank()) Text(" · ", color = DesktopColors.TextGray, fontSize = 14.sp)
-                Text(summary, color = DesktopColors.TextGray, fontSize = 14.sp)
             }
+            Text(
+                summary,
+                color = DesktopColors.TextGray,
+                fontSize = 14.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp)
+            )
         }
     }
 }
@@ -881,6 +899,7 @@ private fun PlaylistActionBar(
     onImportTo: (UserPlaylist) -> Unit,
     onCreateImport: () -> Unit,
     canCopyLink: Boolean,
+    canDownload: Boolean,
     onCopyLink: () -> Unit,
     onQueryChange: (String) -> Unit,
     onOrderChange: (PlaylistSortOrder) -> Unit,
@@ -915,7 +934,7 @@ private fun PlaylistActionBar(
                 onClick = onToggleComments
             )
         }
-        ActionIcon(Icons.Rounded.Download, "下载$resourceLabel", onClick = onDownload)
+        if (canDownload) ActionIcon(Icons.Rounded.Download, "下载$resourceLabel", onClick = onDownload)
         PlaylistMoreMenu(
             resourceLabel, canDelete, canCopyLink, onPlayNextAll,
             importState, onPrepareImport, onImportTo, onCreateImport, onCopyLink, onDelete
@@ -1099,7 +1118,7 @@ internal fun PlaylistSortMenu(order: PlaylistSortOrder, showAdded: Boolean, onSe
 // 列宽与 TrackRow 逐项对齐：序号 32、封面槽 56、标题 0.45、专辑 0.35、[添加日期]、红心槽 32、时长 48、更多槽 36
 @Composable
 internal fun TrackColumnHeader(order: PlaylistSortOrder, showAdded: Boolean, onSort: (PlaylistSortKey) -> Unit) {
-    Column(Modifier.fillMaxWidth().background(DesktopColors.Pane)) {
+    Column(Modifier.fillMaxWidth().paneBackdrop(DesktopColors.Pane)) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
