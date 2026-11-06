@@ -70,10 +70,63 @@ class UpdateRepository(
         return VersionCodeResolver.resolve(dto.tagName)
     }
 
-    // 去掉正文里的 HTML 注释：发布脚本用它写 versionCode 标记，不该显示给用户
+    // 去掉正文里的 HTML 注释：发布脚本用它写 versionCode 标记，不该显示给用户；
+    // 再把 Markdown 语法摊平成纯文本——弹窗只有一个 Text，不认 # 和 **，
+    // 原样显示出来就是「## 🎵 播放页细节」这种一眼像出错的排版
     private fun stripMarkers(body: String?): String {
         if (body.isNullOrBlank()) return ""
-        return body.replace(HTML_COMMENT_REGEX, "").trim()
+        return markdownToPlainText(body.replace(HTML_COMMENT_REGEX, "")).trim()
+    }
+
+    /**
+     * 把 GitHub Release 正文常用的 Markdown 收敛成可读的纯文本。
+     *
+     * 只处理本仓库发布日志实际会用到的那几种写法，不追求完整的 Markdown 解析：
+     * 标题降级成加粗感的独立行、列表转成「· 」、去掉粗体/斜体/代码符号、链接只留文字。
+     * 保留原有换行，段落结构不会丢。
+     */
+    private fun markdownToPlainText(source: String): String {
+        val out = StringBuilder()
+        for (rawLine in source.lines()) {
+            var line = rawLine
+            when {
+                // 分隔线：整行 --- / *** / ___，直接当空行用
+                SEPARATOR_REGEX.matches(line.trim()) -> line = ""
+                // 表格的对齐行 |---|---| 只承担排版作用，丢掉
+                TABLE_ALIGN_REGEX.matches(line.trim()) -> line = ""
+                // 表格数据行：| a | b | → a：b，两列以上用「· 」分隔
+                TABLE_ROW_REGEX.matches(line.trim()) -> {
+                    val cells = line.trim().trim('|').split('|').map { it.trim() }.filter { it.isNotEmpty() }
+                    line = when (cells.size) {
+                        0 -> ""
+                        1 -> cells[0]
+                        2 -> "${cells[0]}：${cells[1]}"
+                        else -> cells[0] + "：" + cells.drop(1).joinToString(" · ")
+                    }
+                }
+                // 标题 # ~ ######：去掉井号，靠「· 」前缀保留层级感
+                HEADING_REGEX.containsMatchIn(line) -> {
+                    val level = line.takeWhile { it == '#' }.length
+                    val text = line.drop(level).trim()
+                    line = if (level >= 3) "· $text" else text
+                }
+                // 无序列表：- / * / + 开头换成中点
+                BULLET_REGEX.containsMatchIn(line) -> {
+                    line = line.replaceFirst(BULLET_REGEX, "· ")
+                }
+                // 引用：去掉 > 前缀
+                QUOTE_REGEX.containsMatchIn(line) -> {
+                    line = line.replaceFirst(QUOTE_REGEX, "")
+                }
+            }
+            // 行内的格式符号统一去掉；链接 [文字](url) 只留文字
+            line = INLINE_LINK_REGEX.replace(line) { it.groupValues[1] }
+            line = BOLD_ITALIC_REGEX.replace(line, "")
+            line = INLINE_CODE_REGEX.replace(line) { it.groupValues[1] }
+            out.append(line).append('\n')
+        }
+        // 连续空行压成一个，避免正文里夹着大片空白
+        return out.toString().replace(MULTI_BLANK_REGEX, "\n\n")
     }
 
     // 匹配 versionCode=20512 / versionCode: 20512 / -20512.apk 这几种写法
@@ -107,5 +160,17 @@ class UpdateRepository(
 
         // HTML 注释块，跨行
         private val HTML_COMMENT_REGEX = Regex("""<!--.*?-->""", RegexOption.DOT_MATCHES_ALL)
+
+        // 发布日志里的 Markdown 语法；只覆盖标题、列表、引用、分隔线与行内格式
+        private val SEPARATOR_REGEX = Regex("""^[-*_]{3,}$""")
+        private val TABLE_ALIGN_REGEX = Regex("""^\|?[\s:-]*-[\s|:-]*$""")
+        private val TABLE_ROW_REGEX = Regex("""^\|.*\|$""")
+        private val HEADING_REGEX = Regex("""^#{1,6}\s""")
+        private val BULLET_REGEX = Regex("""^\s*[-*+]\s+""")
+        private val QUOTE_REGEX = Regex("""^\s*>\s?""")
+        private val INLINE_LINK_REGEX = Regex("""\[([^\]]*)\]\([^)]*\)""")
+        private val BOLD_ITALIC_REGEX = Regex("""(\*\*|__|\*|_|~~)""")
+        private val INLINE_CODE_REGEX = Regex("""`([^`]*)`""")
+        private val MULTI_BLANK_REGEX = Regex("""\n{3,}""")
     }
 }
