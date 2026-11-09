@@ -43,7 +43,9 @@ internal class MelodiaRenderersFactory(
     ): AudioSink = DefaultAudioSink.Builder(context)
         .apply {
             if (usbAudio != null) {
-                // 独占输出要求浮点直通，避免再经一次整型量化
+                // 独占输出要求浮点直通，避免再经一次整型量化。
+                // 注意「sink 用浮点输出」与「向解码器请求浮点」是两件事：后者由 UsbAudioOutputProvider
+                // 的格式支持声明决定（走系统输出时降为需转码），否则三星部分 FLAC 会倍速播放并带杂音。
                 setEnableFloatOutput(true)
                 setAudioOutputProvider(
                     UsbAudioOutputProvider(
