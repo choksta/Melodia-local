@@ -3,7 +3,6 @@ package com.lin0721.linmusic.di
 import com.lin0721.linmusic.core.auth.LoginViewModel
 import com.lin0721.linmusic.feature.settings.ui.SettingsViewModel
 import com.lin0721.linmusic.feature.create.ui.CreateViewModel
-import com.lin0721.linmusic.feature.fm.ui.FmViewModel
 import com.lin0721.linmusic.feature.home.ui.HomeViewModel
 import com.lin0721.linmusic.feature.music.ui.MusicViewModel
 import com.lin0721.linmusic.feature.music.ui.StyleDetailViewModel
@@ -24,6 +23,8 @@ import com.lin0721.linmusic.feature.profile.ui.FollowListViewModel
 import com.lin0721.linmusic.feature.listentogether.ui.ListenTogetherViewModel
 import com.lin0721.linmusic.feature.listentogether.ui.RoomSongPickerViewModel
 import com.lin0721.linmusic.feature.message.ui.MessageViewModel
+import com.lin0721.linmusic.feature.message.ui.PrivateChatViewModel
+import com.lin0721.linmusic.feature.message.ui.ShareToFriendViewModel
 import com.lin0721.linmusic.feature.profile.ui.ProfileViewModel
 import com.lin0721.linmusic.feature.recent.ui.RecentPlayViewModel
 import com.lin0721.linmusic.feature.cloud.ui.CloudViewModel
@@ -67,11 +68,11 @@ val viewModelModule = module {
             externalResolver = get(),
             searchProviders = getAll<PlatformSearchProvider>(),
             settingsPreferences = getOrNull(),
-            sourcePreferences = getOrNull()
+            sourcePreferences = getOrNull(),
+            linkPreviewResolver = getOrNull()
         )
     }
     viewModelOf(::PlaylistCategoryViewModel)
-    viewModelOf(::FmViewModel)
     viewModelOf(::LibraryViewModel)
     viewModelOf(::RecentPlayViewModel)
     viewModelOf(::CloudViewModel)
@@ -87,6 +88,8 @@ val viewModelModule = module {
     viewModelOf(::LoginViewModel)
 
     viewModelOf(::MessageViewModel)
+    viewModelOf(::PrivateChatViewModel)
+    viewModelOf(::ShareToFriendViewModel)
     viewModelOf(::ListenTogetherViewModel)
     viewModelOf(::RoomSongPickerViewModel)
     viewModelOf(::ProfileViewModel)

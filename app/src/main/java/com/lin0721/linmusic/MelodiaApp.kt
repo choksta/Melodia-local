@@ -1,11 +1,7 @@
 package com.lin0721.linmusic
 
 import com.lin0721.linmusic.core.plugin.PluginContent
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -15,8 +11,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,7 +20,6 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
@@ -36,8 +29,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -45,11 +36,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -59,8 +54,6 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -72,17 +65,34 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lin0721.linmusic.core.ui.components.PlaylistCollectSheet
 import com.lin0721.linmusic.core.ui.components.LoginBottomSheet
 import com.lin0721.linmusic.core.ui.components.ProfileSidebar
 import com.lin0721.linmusic.core.ui.components.WebViewLoginScreen
 import com.lin0721.linmusic.core.ui.components.ToastManager
+import com.lin0721.linmusic.core.deeplink.ClipboardLinkFloatingCard
+import com.lin0721.linmusic.core.deeplink.LinkPreviewResolver
+import com.lin0721.linmusic.core.deeplink.LinkPreviewState
+import com.lin0721.linmusic.core.deeplink.SongLinkRequests
+import com.lin0721.linmusic.core.deeplink.SongLinkTarget
+import com.lin0721.linmusic.core.deeplink.enqueueLinkTrackNext
+import com.lin0721.linmusic.core.deeplink.playLinkTrack
+import com.lin0721.linmusic.core.player.data.PlaybackRepository
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
+import com.lin0721.linmusic.core.ui.back.LocalPredictiveBackEnabled
+import com.lin0721.linmusic.core.ui.back.MelodiaBackHandler
+import com.lin0721.linmusic.core.ui.back.decelerateBackProgress
+import com.lin0721.linmusic.core.ui.back.rememberBackDismissState
 import com.lin0721.linmusic.core.ui.interaction.pressable
 import com.lin0721.linmusic.core.ui.theme.LocalUiMotion
 import com.lin0721.linmusic.core.ui.theme.MelodiaColors
@@ -93,28 +103,35 @@ import com.lin0721.linmusic.core.ui.components.SwipeQueueTarget
 import com.lin0721.linmusic.core.ui.theme.skinBackdropRoot
 import com.lin0721.linmusic.core.ui.theme.uiTween
 import com.lin0721.linmusic.core.player.floatinglyric.FloatingLyricRequests
+import com.lin0721.linmusic.feature.listentogether.ui.ListenTogetherRoomHost
 import com.lin0721.linmusic.feature.recognition.service.PlaybackRecognitionState
 import com.lin0721.linmusic.feature.recognition.ui.RecognitionScreen
 import com.lin0721.linmusic.core.ui.theme.MelodiaPress
 import com.lin0721.linmusic.core.ui.theme.InfoCardRadius
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
+import com.lin0721.linmusic.core.update.UpdateChecker
 import com.lin0721.linmusic.feature.library.ui.LibraryViewModel
 import com.lin0721.linmusic.core.preferences.BottomBarItem
 import com.lin0721.linmusic.core.preferences.BottomBarLayout
 import com.lin0721.linmusic.core.preferences.SettingsPreferences
 import com.lin0721.linmusic.core.preferences.ThemeMode
 import com.lin0721.linmusic.core.ui.theme.LocalMelodiaPalette
-import com.lin0721.linmusic.core.update.UpdateChecker
 import com.lin0721.linmusic.feature.home.ui.HomeViewModel
-import com.lin0721.linmusic.feature.fm.ui.FmViewModel
 import com.lin0721.linmusic.feature.settings.ui.UpdateDialog
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import com.lin0721.linmusic.core.auth.AccountEvents
+import com.lin0721.linmusic.core.auth.AccountSwitcher
+import com.lin0721.linmusic.core.auth.UserPreferences
+import com.lin0721.linmusic.feature.message.ui.PrivateConversationPreviewStore
+import com.lin0721.linmusic.core.auth.AccountSwitchReason
+import com.lin0721.linmusic.core.auth.SessionMonitor
+import com.lin0721.linmusic.core.player.PlaybackController
 import com.lin0721.linmusic.core.player.PlayerManager
+import com.lin0721.linmusic.core.player.SleepTimerRequests
 import com.lin0721.linmusic.core.ui.theme.LocalMelodiaWindowSizeClass
 import com.lin0721.linmusic.core.ui.theme.MelodiaWindowSizeClass
 import com.lin0721.linmusic.core.ui.theme.rememberMelodiaWindowSizeClass
@@ -127,6 +144,7 @@ import com.lin0721.linmusic.core.ui.theme.PanelRiseSpec
 import com.lin0721.linmusic.core.ui.theme.rememberMelodiaPlayerPanelWidth
 import com.lin0721.linmusic.core.ui.theme.ProvideMelodiaContentSizeClass
 import com.lin0721.linmusic.core.ui.theme.LocalMelodiaSystemBarsConsumed
+import com.lin0721.linmusic.core.ui.badge.DragBadgeOverlayHost
 import com.lin0721.linmusic.core.ui.theme.LocalMelodiaPlayerPanelAtStart
 import kotlin.math.roundToInt
 
@@ -137,6 +155,48 @@ private val PanelRiseStartRadius = 8.dp
 
 // 面板生长进度走到这个比例时完全不透明，此前与底下的迷你条交叉淡入
 private const val PanelRiseFadeFraction = 0.4f
+
+internal const val PANEL_BACK_MIN_VALUE = 0.85f
+
+// 平板面板返回跟手进度：从完全展开的 1f 往回拖到最低 0.85f
+internal fun computePanelBackValue(progress: Float): Float =
+    1f - (1f - PANEL_BACK_MIN_VALUE) * decelerateBackProgress(progress)
+
+private enum class GlobalBackTarget {
+    Undecided,
+    PlayerSheet,
+    Sidebar,
+    CreateSheet,
+    Page,
+    Ignored
+}
+
+private enum class PanelBackPhase {
+    Idle,
+    Seeking,
+    Canceling
+}
+
+private enum class PanelBackSession {
+    Undecided,
+    Active,
+    Ignored
+}
+
+private sealed interface PanelRiseIntent {
+    data object ResetOffPanel : PanelRiseIntent
+    data object Open : PanelRiseIntent
+    data object Close : PanelRiseIntent
+    data class Seek(val value: Float) : PanelRiseIntent
+    data object CancelToOpen : PanelRiseIntent
+}
+
+private sealed interface PanelFullscreenIntent {
+    data object SnapOff : PanelFullscreenIntent
+    data class Animate(val targetFullscreen: Boolean) : PanelFullscreenIntent
+    data class Seek(val value: Float) : PanelFullscreenIntent
+    data object CancelToFullscreen : PanelFullscreenIntent
+}
 
 // 面板生长时的可见区域：宽度不变，只裁上下边界
 private class PanelRevealShape(
@@ -154,17 +214,7 @@ fun MelodiaApp() {
     val motion = LocalUiMotion.current
     val viewModel: HomeViewModel = koinViewModel()
     val libraryViewModel: LibraryViewModel = koinViewModel()
-    // 私人 FM 没有独立页面：入口只负责把流起起来，界面交给全屏播放页
-    val fmViewModel: FmViewModel = koinViewModel()
     val settingsPreferences: SettingsPreferences = koinInject()
-    // 侧栏明暗一键切换：写入偏好后由主题流驱动重组，并走 ThemeRevealHost 扩散动画
-    val themeToggleScope = rememberCoroutineScope()
-    val isDarkTheme = LocalMelodiaPalette.current.isDark
-    val onToggleTheme: () -> Unit = {
-        themeToggleScope.launch {
-            settingsPreferences.saveThemeMode(if (isDarkTheme) ThemeMode.LIGHT else ThemeMode.DARK)
-        }
-    }
     val showCreateEntry by settingsPreferences.showCreateEntry.collectAsStateWithLifecycle(initialValue = true)
     val bottomBarLayout by settingsPreferences.bottomBarLayout.collectAsStateWithLifecycle(initialValue = BottomBarLayout.DEFAULT)
     val bottomBarIconOnly by settingsPreferences.bottomBarIconOnly.collectAsStateWithLifecycle(initialValue = false)
@@ -175,14 +225,25 @@ fun MelodiaApp() {
         .collectAsStateWithLifecycle(initialValue = SettingsPreferences.SIDE_PLAYER_POSITION_RIGHT)
     val isPanelAtStart = sidePlayerPosition == SettingsPreferences.SIDE_PLAYER_POSITION_LEFT
     val tabletImmersiveMode by settingsPreferences.tabletImmersiveMode.collectAsStateWithLifecycle(initialValue = false)
+    // 侧栏明暗一键切换：写入偏好后由主题流驱动重组，并走 ThemeRevealHost 扩散动画
+    val themeToggleScope = rememberCoroutineScope()
+    val isDarkTheme = LocalMelodiaPalette.current.isDark
+    val onToggleTheme: () -> Unit = {
+        themeToggleScope.launch {
+            settingsPreferences.saveThemeMode(if (isDarkTheme) ThemeMode.LIGHT else ThemeMode.DARK)
+        }
+    }
     // 迷你条、面板等 Android 组件直接消费 Media3 MediaItem，取具体实现
     val playerManager: PlayerManager = koinInject()
     val currentTrack by playerManager.currentTrack.collectAsStateWithLifecycle()
+    val playContext by playerManager.playContext.collectAsStateWithLifecycle()
     val previousQueueItem by viewModel.playerManager.previousQueueItem.collectAsStateWithLifecycle()
     val nextQueueItem by viewModel.playerManager.nextQueueItem.collectAsStateWithLifecycle()
     val currentQueueIndex by viewModel.playerManager.currentIndex.collectAsStateWithLifecycle()
     val currentQueueItem by viewModel.playerManager.currentQueueItem.collectAsStateWithLifecycle()
     val swipeQueueTarget = SwipeQueueTarget(currentQueueIndex, currentQueueItem?.songId?.toString())
+    // 侧栏「私人 FM」入口：起流要等接口回来，拿到第一首后再展开播放页，避免先闪上一首的封面
+    var openPlayerOnFmStart by remember { mutableStateOf(false) }
     val isPlaying by viewModel.playerManager.isPlaying.collectAsStateWithLifecycle()
     // 迷你播放条按钮专用：弱网缓冲期间也要立刻显示"暂停中"图标，不能等音频真正流出的 isPlaying
     val miniPlayerShowPause by viewModel.playerManager.playWhenReady.collectAsStateWithLifecycle()
@@ -190,6 +251,21 @@ fun MelodiaApp() {
     val currentPositionProvider = { currentPositionState.value }
     val duration by viewModel.playerManager.duration.collectAsStateWithLifecycle()
     val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
+    val privateUnreadMonitor: com.lin0721.linmusic.feature.message.ui.PrivateUnreadMonitor = koinInject()
+    val privateUnreadCount by privateUnreadMonitor.unreadCount.collectAsStateWithLifecycle()
+    // 私信未读只在前台轮询
+    val appLifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(appLifecycleOwner, privateUnreadMonitor) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> privateUnreadMonitor.setForeground(true)
+                Lifecycle.Event.ON_STOP -> privateUnreadMonitor.setForeground(false)
+                else -> Unit
+            }
+        }
+        appLifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { appLifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val collectState by viewModel.collectState.collectAsStateWithLifecycle()
     val likedSongIds by viewModel.likedSongIds.collectAsStateWithLifecycle()
     // mini 栏＋按钮触发的"收藏到歌单"弹层，非 null 时显示
@@ -218,10 +294,14 @@ fun MelodiaApp() {
 
     val playerSheet = rememberMelodiaPlayerSheetState()
     val navigation = rememberMelodiaNavigationState()
-    val sidebar = rememberMelodiaSidebarState()
-    val fmEntryScope = rememberCoroutineScope()
     val pluginContent: PluginContent = koinInject()
     LaunchedEffect(navigation) { pluginContent.opens.collect { navigation.openPlaylist(it.id, false) } }
+    val sidebar = rememberMelodiaSidebarState(SidebarWidth)
+
+    val playbackRepository: PlaybackRepository = koinInject()
+    val songLinkRequests: SongLinkRequests = koinInject()
+    val linkPreviewResolver: LinkPreviewResolver = koinInject()
+    val scope = rememberCoroutineScope()
 
     // 动态同步底栏首个可用路由为首选根 Tab
     LaunchedEffect(bottomBarLayout) {
@@ -268,6 +348,42 @@ fun MelodiaApp() {
     // 侧边栏未登录入口触发的登录，侧栏可从任意页面拉出，登录界面挂在全局层
     var showSidebarLoginSheet by remember { mutableStateOf(false) }
     var showSidebarWebLogin by remember { mutableStateOf(false) }
+    // 侧边栏「添加帐号」打开的登录
+    var sidebarLoginAddAccount by remember { mutableStateOf(false) }
+    val userPreferences: UserPreferences = koinInject()
+    val accountSwitcher: AccountSwitcher = koinInject()
+    val conversationPreviewStore: PrivateConversationPreviewStore = koinInject()
+    val accounts by userPreferences.accounts.collectAsStateWithLifecycle(initialValue = emptyList())
+    val conversationPreview by conversationPreviewStore.state.collectAsStateWithLifecycle()
+    val accountScope = rememberCoroutineScope()
+    val sessionMonitor: SessionMonitor = koinInject()
+    LaunchedEffect(sessionMonitor) {
+        sessionMonitor.watch {}
+    }
+    LaunchedEffect(sessionMonitor) {
+        sessionMonitor.expiredNotices.collect { notice ->
+            val nextProfile = notice.nextProfile
+            if (nextProfile != null) {
+                ToastManager.showToast("当前账户登录已过期，已切换至 ${nextProfile.nickname}")
+            } else {
+                ToastManager.showToast("登录已过期，请重新登录")
+                sidebarLoginAddAccount = false
+                showSidebarLoginSheet = true
+            }
+        }
+    }
+    // 打开侧边栏先显示缓存，再后台刷新私信预览
+    LaunchedEffect(sidebar.isOpen, userProfile?.uid) {
+        if (sidebar.isOpen && userProfile != null) conversationPreviewStore.refresh()
+    }
+    LaunchedEffect(navigation, sidebar) {
+        AccountEvents.switched.collect { event ->
+            if (sidebar.isOpen) sidebar.close()
+            if (event.reason != AccountSwitchReason.ADDED || event.previousUid != null) {
+                navigation.openTab(Screen.Home)
+            }
+        }
+    }
     // 悬浮播放卡片 + 导航栏的实际高度，下发给各页面用作列表底部留白
     var bottomOverlayHeight by remember { mutableStateOf(0.dp) }
     val miniPlayerSuppressor = remember { MiniPlayerSuppressor() }
@@ -292,21 +408,73 @@ fun MelodiaApp() {
     // 面板铺满全屏：由面板左上角的侧栏按钮切换；面板收起或离开 Expanded 时一并退出
     var isPanelFullscreen by remember { mutableStateOf(false) }
     val panelFullscreen = remember { Animatable(0f) }
-    LaunchedEffect(isPanelVisible, usePanel) {
-        if (!isPanelVisible) isPanelFullscreen = false
-        if (!usePanel) {
-            isPanelExpanded = false
-            isPanelDocked = false
-            panelRise.snapTo(0f)
-            panelFullscreen.snapTo(0f)
-        } else if (isPanelVisible) {
-            panelRise.animateTo(1f, motion.spec(PanelRiseSpec))
-            isPanelDocked = true
-        } else {
-            isPanelDocked = false
-            panelRise.animateTo(0f, motion.spec(PanelRiseSpec))
+    var isLyricsFullScreen by remember { mutableStateOf(false) }
+    var isLyricsControlsVisible by remember { mutableStateOf(true) }
+
+    var riseBackPhase by remember { mutableStateOf(PanelBackPhase.Idle) }
+    var riseBackProgress by remember { mutableFloatStateOf(0f) }
+    var fullscreenBackPhase by remember { mutableStateOf(PanelBackPhase.Idle) }
+    var fullscreenBackProgress by remember { mutableFloatStateOf(0f) }
+
+    val latestUsePanel by rememberUpdatedState(usePanel)
+    val latestLyricsFullscreen by rememberUpdatedState(isLyricsFullScreen)
+    val latestSidePlayerPinned by rememberUpdatedState(sidePlayerPinned)
+    val latestSidebarOpen by rememberUpdatedState(sidebar.isOpen)
+    val latestShowCreateSheet by rememberUpdatedState(showCreateSheet)
+    val latestMotion by rememberUpdatedState(motion)
+
+    // 单一协程串行消费面板升起/收起与返回跟手进度，防止手势与状态切换并发调用 Animatable
+    LaunchedEffect(panelRise) {
+        snapshotFlow {
+            // 直接读状态而非重组后的快照：返回提交改完布尔值的那一帧就要走收起，不能先被判成展开
+            val panelVisible = latestUsePanel && isPanelExpanded
+            val canRiseBack = panelVisible && !latestSidePlayerPinned && !latestSidebarOpen && !latestShowCreateSheet
+            when {
+                !latestUsePanel -> PanelRiseIntent.ResetOffPanel
+                !panelVisible -> PanelRiseIntent.Close
+                riseBackPhase == PanelBackPhase.Seeking && canRiseBack ->
+                    PanelRiseIntent.Seek(computePanelBackValue(riseBackProgress))
+                riseBackPhase == PanelBackPhase.Canceling && canRiseBack ->
+                    PanelRiseIntent.CancelToOpen
+                else -> PanelRiseIntent.Open
+            }
+        }.collectLatest { intent ->
+            when (intent) {
+                PanelRiseIntent.ResetOffPanel -> {
+                    riseBackPhase = PanelBackPhase.Idle
+                    isPanelFullscreen = false
+                    isPanelExpanded = false
+                    isPanelDocked = false
+                    panelRise.snapTo(0f)
+                }
+                PanelRiseIntent.Close -> {
+                    riseBackPhase = PanelBackPhase.Idle
+                    isPanelFullscreen = false
+                    isPanelDocked = false
+                    panelRise.animateTo(0f, latestMotion.spec(PanelRiseSpec))
+                }
+                PanelRiseIntent.Open -> {
+                    riseBackPhase = PanelBackPhase.Idle
+                    panelRise.animateTo(1f, latestMotion.spec(PanelRiseSpec))
+                    isPanelDocked = true
+                }
+                is PanelRiseIntent.Seek -> {
+                    panelRise.snapTo(intent.value)
+                }
+                PanelRiseIntent.CancelToOpen -> {
+                    try {
+                        panelRise.animateTo(1f, latestMotion.spec(PanelRiseSpec))
+                        isPanelDocked = true
+                    } finally {
+                        if (riseBackPhase == PanelBackPhase.Canceling) {
+                            riseBackPhase = PanelBackPhase.Idle
+                        }
+                    }
+                }
+            }
         }
     }
+
     // 切到侧栏模式（设置变更或旋转）时收起已打开的底部全屏播放页
     LaunchedEffect(usePanel) {
         if (usePanel && playerSheet.isOpen) playerSheet.animateTo(false, 0f)
@@ -316,22 +484,60 @@ fun MelodiaApp() {
     LaunchedEffect(isPanelShown) {
         if (isPanelShown) hasPanelBeenShown = true
     }
-    LaunchedEffect(isPanelFullscreen) {
-        // 面板尚未显示时直接就位：默认全屏展开若与升起动画同时拉宽，首帧组合时进度已走一半，宽度会跳变
-        if (isPanelFullscreen && panelRise.value == 0f) {
-            panelFullscreen.snapTo(1f)
-        } else {
-            panelFullscreen.animateTo(if (isPanelFullscreen) 1f else 0f, motion.spec(PanelFullscreenSpec))
+
+    // 单一协程串行消费面板全屏/侧栏切换与返回跟手进度，避免被打断在半路
+    LaunchedEffect(panelFullscreen) {
+        snapshotFlow {
+            when {
+                !latestUsePanel -> PanelFullscreenIntent.SnapOff
+                !isPanelFullscreen -> PanelFullscreenIntent.Animate(targetFullscreen = false)
+                fullscreenBackPhase == PanelBackPhase.Seeking && !latestLyricsFullscreen ->
+                    PanelFullscreenIntent.Seek(computePanelBackValue(fullscreenBackProgress))
+                fullscreenBackPhase == PanelBackPhase.Canceling && !latestLyricsFullscreen ->
+                    PanelFullscreenIntent.CancelToFullscreen
+                else -> PanelFullscreenIntent.Animate(targetFullscreen = true)
+            }
+        }.collectLatest { intent ->
+            when (intent) {
+                PanelFullscreenIntent.SnapOff -> {
+                    fullscreenBackPhase = PanelBackPhase.Idle
+                    panelFullscreen.snapTo(0f)
+                }
+                is PanelFullscreenIntent.Animate -> {
+                    fullscreenBackPhase = PanelBackPhase.Idle
+                    if (intent.targetFullscreen) {
+                        // 面板尚未显示时直接就位：默认全屏展开若与升起动画同时拉宽，首帧组合时进度已走一半，宽度会跳变
+                        if (Snapshot.withoutReadObservation { panelRise.value == 0f }) {
+                            panelFullscreen.snapTo(1f)
+                        } else {
+                            panelFullscreen.animateTo(1f, latestMotion.spec(PanelFullscreenSpec))
+                        }
+                    } else {
+                        panelFullscreen.animateTo(0f, latestMotion.spec(PanelFullscreenSpec))
+                    }
+                }
+                is PanelFullscreenIntent.Seek -> {
+                    panelFullscreen.snapTo(intent.value)
+                }
+                PanelFullscreenIntent.CancelToFullscreen -> {
+                    try {
+                        panelFullscreen.animateTo(1f, latestMotion.spec(PanelFullscreenSpec))
+                    } finally {
+                        if (fullscreenBackPhase == PanelBackPhase.Canceling) {
+                            fullscreenBackPhase = PanelBackPhase.Idle
+                        }
+                    }
+                }
+            }
         }
     }
+
     val panelWidth = rememberMelodiaPlayerPanelWidth()
     // 主页面内容层的实际宽度，用于算出播放面板铺满全屏时的卡片宽度
     var contentLayerWidth by remember { mutableStateOf(0.dp) }
     // 原始系统栏高度，双卡片模式下两张卡片据此避让；此处在任何 consumeWindowInsets 之外，读到的是完整值
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navigationBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    var isLyricsFullScreen by remember { mutableStateOf(false) }
-    var isLyricsControlsVisible by remember { mutableStateOf(true) }
 
     val context = LocalContext.current
     val window = (context as? ComponentActivity)?.window
@@ -367,6 +573,85 @@ fun MelodiaApp() {
         isPanelExpanded = true
     }
 
+    // 侧栏「私人 FM」：等第一首真正落到播放器再展开，避免先闪一下上一首的封面与背景
+    LaunchedEffect(openPlayerOnFmStart, playContext, currentTrack) {
+        if (openPlayerOnFmStart && playContext == PlaybackController.CONTEXT_PERSONAL_FM && currentTrack != null) {
+            openPlayerOnFmStart = false
+            if (sidebar.isOpen) sidebar.close()
+            if (usePanel) openPanel() else playerSheet.animateTo(true, 0f)
+        }
+    }
+
+    val currentUsePanel by rememberUpdatedState(usePanel)
+
+    // 通知栏定时关闭入口：展开播放页后由 FullPlayerScreen 消费并弹出定时关闭面板
+    val sleepTimerRequests: SleepTimerRequests = koinInject()
+    val pendingSleepTimer by sleepTimerRequests.pendingOpenTimer.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingSleepTimer, currentTrack) {
+        if (pendingSleepTimer && currentTrack != null) {
+            if (sidebar.isOpen) sidebar.close()
+            showCreateSheet = false
+            showRecognition = false
+            if (currentUsePanel) {
+                openPanel()
+            } else {
+                playerSheet.animateTo(true, 0f)
+            }
+        }
+    }
+
+    // 从外链或分享进来：单曲拉到详情就非破坏性插播并展开播放页，歌单/专辑/歌手收起浮层并跳页
+    LaunchedEffect(Unit) {
+        songLinkRequests.pendingTarget.filterNotNull().collect { target ->
+            songLinkRequests.consume()
+            when (target) {
+                is SongLinkTarget.Playlist -> {
+                    if (sidebar.isOpen) sidebar.close()
+                    showCreateSheet = false
+                    if (playerSheet.isOpen) {
+                        navigation.resetPlayerNavigation()
+                        playerSheet.animateTo(false, 0f)
+                    }
+                    isPanelFullscreen = false
+                    navigation.openPlaylist(target.id, target.isAlbum)
+                }
+                is SongLinkTarget.Artist -> {
+                    if (sidebar.isOpen) sidebar.close()
+                    showCreateSheet = false
+                    if (playerSheet.isOpen) {
+                        navigation.resetPlayerNavigation()
+                        playerSheet.animateTo(false, 0f)
+                    }
+                    isPanelFullscreen = false
+                    navigation.openArtist(target.id)
+                }
+                is SongLinkTarget.Song -> {
+                    val track = playbackRepository.getSongDetail(target.id).first().getOrNull()
+                    if (track == null) {
+                        ToastManager.showToast("这首歌打不开，可能已下架")
+                        return@collect
+                    }
+                    playerManager.playLinkTrack(track, "链接")
+                    if (currentUsePanel) {
+                        openPanel()
+                    } else {
+                        playerSheet.animateTo(true, 0f)
+                    }
+                }
+            }
+        }
+    }
+
+    // 剪贴板兜底：切回应用识别到网易云链接时，用轻浮条异步展示预览信息
+    val clipboardLink by songLinkRequests.pendingClipboard.collectAsStateWithLifecycle()
+    var clipboardPreviewState by remember { mutableStateOf<LinkPreviewState>(LinkPreviewState.Loading) }
+    LaunchedEffect(clipboardLink) {
+        val current = clipboardLink ?: return@LaunchedEffect
+        clipboardPreviewState = LinkPreviewState.Loading
+        val preview = linkPreviewResolver.resolve(current.target)
+        clipboardPreviewState = if (preview != null) LinkPreviewState.Ready(preview) else LinkPreviewState.Failed
+    }
+
     fun handleBack() {
         val shouldReopenPlayer = navigation.navigateBack()
         if (shouldReopenPlayer && !usePanel) {
@@ -388,31 +673,203 @@ fun MelodiaApp() {
     val isAnyOverlayOpen = playerSheet.isOpen || navigation.isNavigatingFromPlayer || sidebar.isOpen ||
             showCreateSheet || navigation.canGoBackToHomeAll
 
-    BackHandler(enabled = isAnyOverlayOpen) {
-        when {
-            playerSheet.isOpen -> {
-                navigation.resetPlayerNavigation()
-                playerSheet.animateTo(false, 0f)
-            }
-            navigation.isNavigatingFromPlayer -> handleBack()
-            sidebar.isOpen -> sidebar.close()
-            showCreateSheet -> showCreateSheet = false
-            navigation.canGoBackToHomeAll -> handleBack()
+    val pageBackGesture = remember { PageBackGestureState() }
+    val createBackDismissState = rememberBackDismissState()
+    val wasCreateMenuVisible = remember { booleanArrayOf(false) }
+    val isCreateMenuVisible = showCreateSheet && !isLoginScreenVisible
+    SideEffect {
+        if (isCreateMenuVisible && !wasCreateMenuVisible[0]) {
+            createBackDismissState.reset()
         }
+        wasCreateMenuVisible[0] = isCreateMenuVisible
     }
+    val predictiveBackEnabled by rememberUpdatedState(LocalPredictiveBackEnabled.current)
+    val gestureSession = remember { object { var target = GlobalBackTarget.Undecided } }
 
+    MelodiaBackHandler(
+        enabled = isAnyOverlayOpen,
+        onProgress = { event ->
+            if (gestureSession.target == GlobalBackTarget.Undecided) {
+                when {
+                    playerSheet.isOpen -> {
+                        gestureSession.target = GlobalBackTarget.PlayerSheet
+                        playerSheet.onBackProgress(event.progress)
+                    }
+                    navigation.isNavigatingFromPlayer -> {
+                        val target = navigation.peekBackTarget() as? BackTarget.Entry
+                        if (target != null) {
+                            gestureSession.target = GlobalBackTarget.Page
+                            pageBackGesture.begin(
+                                origin = navigation.currentEntry,
+                                target = target.entry,
+                                fromLeftEdge = event.fromLeftEdge,
+                                progress = event.progress
+                            )
+                        } else {
+                            gestureSession.target = GlobalBackTarget.Ignored
+                        }
+                    }
+                    sidebar.isOpen -> {
+                        gestureSession.target = GlobalBackTarget.Sidebar
+                        sidebar.onBackProgress(event.progress)
+                    }
+                    showCreateSheet -> {
+                        gestureSession.target = GlobalBackTarget.CreateSheet
+                        createBackDismissState.onProgress(event.progress)
+                    }
+                    navigation.canGoBackToHomeAll -> {
+                        val target = navigation.peekBackTarget() as? BackTarget.Entry
+                        if (target != null) {
+                            gestureSession.target = GlobalBackTarget.Page
+                            pageBackGesture.begin(
+                                origin = navigation.currentEntry,
+                                target = target.entry,
+                                fromLeftEdge = event.fromLeftEdge,
+                                progress = event.progress
+                            )
+                        } else {
+                            gestureSession.target = GlobalBackTarget.Ignored
+                        }
+                    }
+                    else -> gestureSession.target = GlobalBackTarget.Ignored
+                }
+            } else {
+                when (gestureSession.target) {
+                    GlobalBackTarget.PlayerSheet -> playerSheet.onBackProgress(event.progress)
+                    GlobalBackTarget.Sidebar -> sidebar.onBackProgress(event.progress)
+                    GlobalBackTarget.CreateSheet -> createBackDismissState.onProgress(event.progress)
+                    GlobalBackTarget.Page -> pageBackGesture.update(
+                        progress = event.progress,
+                        fromLeftEdge = event.fromLeftEdge
+                    )
+                    GlobalBackTarget.Ignored, GlobalBackTarget.Undecided -> Unit
+                }
+            }
+        },
+        onCancel = {
+            when (gestureSession.target) {
+                GlobalBackTarget.PlayerSheet -> playerSheet.onBackCancel()
+                GlobalBackTarget.Sidebar -> sidebar.onBackCancel()
+                GlobalBackTarget.CreateSheet -> createBackDismissState.onCancel()
+                GlobalBackTarget.Page -> pageBackGesture.cancel()
+                GlobalBackTarget.Ignored, GlobalBackTarget.Undecided -> Unit
+            }
+            gestureSession.target = GlobalBackTarget.Undecided
+        },
+        onBack = {
+            val sessionTarget = gestureSession.target
+            gestureSession.target = GlobalBackTarget.Undecided
+            when (sessionTarget) {
+                GlobalBackTarget.Page -> pageBackGesture.commit()
+                GlobalBackTarget.CreateSheet -> createBackDismissState.onCommit()
+                GlobalBackTarget.Undecided -> {
+                    // 极快轻扫时系统可能跳过 onBackProgressed 直接触发 onBackPressed，补走预见式退场以防回退到原动画
+                    if (predictiveBackEnabled && !playerSheet.isOpen &&
+                        (navigation.isNavigatingFromPlayer || (!sidebar.isOpen && !showCreateSheet && navigation.canGoBackToHomeAll))
+                    ) {
+                        val target = navigation.peekBackTarget() as? BackTarget.Entry
+                        if (target != null) {
+                            pageBackGesture.begin(
+                                origin = navigation.currentEntry,
+                                target = target.entry,
+                                fromLeftEdge = true,
+                                progress = 0f
+                            )
+                            pageBackGesture.commit()
+                        }
+                    }
+                }
+                else -> Unit
+            }
+            when {
+                playerSheet.isOpen -> {
+                    navigation.resetPlayerNavigation()
+                    playerSheet.animateTo(false, 0f)
+                }
+                navigation.isNavigatingFromPlayer -> handleBack()
+                sidebar.isOpen -> sidebar.close()
+                showCreateSheet -> showCreateSheet = false
+                navigation.canGoBackToHomeAll -> handleBack()
+            }
+        }
+    )
+
+    val fullscreenBackSession = remember { object { var state = PanelBackSession.Undecided } }
     // 全屏态下返回键先收回侧栏；注册在上面的通用返回处理之后，优先级更高
-    BackHandler(enabled = isPanelFullscreen) {
-        isPanelFullscreen = false
-    }
+    MelodiaBackHandler(
+        enabled = isPanelFullscreen,
+        onProgress = { event ->
+            if (fullscreenBackSession.state == PanelBackSession.Undecided) {
+                if (isPanelFullscreen && !isLyricsFullScreen) {
+                    fullscreenBackSession.state = PanelBackSession.Active
+                    fullscreenBackProgress = event.progress
+                    fullscreenBackPhase = PanelBackPhase.Seeking
+                } else {
+                    fullscreenBackSession.state = PanelBackSession.Ignored
+                }
+            } else if (fullscreenBackSession.state == PanelBackSession.Active && isPanelFullscreen && !isLyricsFullScreen) {
+                fullscreenBackProgress = event.progress
+            }
+        },
+        onCancel = {
+            val wasActive = fullscreenBackSession.state == PanelBackSession.Active
+            fullscreenBackSession.state = PanelBackSession.Undecided
+            if (wasActive && isPanelFullscreen && !isLyricsFullScreen && fullscreenBackPhase == PanelBackPhase.Seeking) {
+                fullscreenBackPhase = PanelBackPhase.Canceling
+            }
+        },
+        onBack = {
+            fullscreenBackSession.state = PanelBackSession.Undecided
+            fullscreenBackPhase = PanelBackPhase.Idle
+            fullscreenBackProgress = 0f
+            isPanelFullscreen = false
+        }
+    )
 
+    val riseBackSession = remember { object { var state = PanelBackSession.Undecided } }
     // 侧栏未钉住时返回直接收起面板（含全屏态）；侧边栏、创建菜单等全局浮层先处理
-    BackHandler(enabled = isPanelVisible && !sidePlayerPinned && !sidebar.isOpen && !showCreateSheet) {
-        isPanelExpanded = false
-    }
+    MelodiaBackHandler(
+        enabled = isPanelVisible && !sidePlayerPinned && !sidebar.isOpen && !showCreateSheet,
+        onProgress = { event ->
+            val canHandle = isPanelVisible && !sidePlayerPinned && !sidebar.isOpen && !showCreateSheet
+            if (riseBackSession.state == PanelBackSession.Undecided) {
+                if (canHandle) {
+                    riseBackSession.state = PanelBackSession.Active
+                    riseBackProgress = event.progress
+                    riseBackPhase = PanelBackPhase.Seeking
+                } else {
+                    riseBackSession.state = PanelBackSession.Ignored
+                }
+            } else if (riseBackSession.state == PanelBackSession.Active && canHandle) {
+                riseBackProgress = event.progress
+            }
+        },
+        onCancel = {
+            val canHandle = isPanelVisible && !sidePlayerPinned && !sidebar.isOpen && !showCreateSheet
+            val wasActive = riseBackSession.state == PanelBackSession.Active
+            riseBackSession.state = PanelBackSession.Undecided
+            if (wasActive && canHandle && riseBackPhase == PanelBackPhase.Seeking) {
+                riseBackPhase = PanelBackPhase.Canceling
+            }
+        },
+        onBack = {
+            riseBackSession.state = PanelBackSession.Undecided
+            riseBackPhase = PanelBackPhase.Idle
+            riseBackProgress = 0f
+            isPanelExpanded = false
+        }
+    )
 
     // 面板停靠左侧时左边缘被面板占住，边缘拉出侧边栏会和面板内的拖动手势冲突
     val isEdgeSwipeBlocked = usePanel && isPanelAtStart && isPanelShown
+    val isSidebarScrimVisible by remember(sidebar) { derivedStateOf { sidebar.progress > 0f } }
+    // 主页任意位置右滑拉出侧栏；横向列表滚到最左后的继续右滑由 homeHandoffConnection 接管
+    val isHomeSwipeEnabled = navigation.currentScreen == Screen.Home &&
+        !playerSheet.isOpen && !showCreateSheet && !showRecognition &&
+        !isLoginScreenVisible && !showSidebarWebLogin && !(usePanel && isPanelShown)
+    SideEffect { sidebar.isHomeHandoffEnabled = isHomeSwipeEnabled }
+    val isDrawerDraggable = sidebar.isOpen || isHomeSwipeEnabled ||
+        (sidebar.isTouchStartingAtEdge && !isEdgeSwipeBlocked)
 
     CompositionLocalProvider(
         LocalMelodiaWindowSizeClass provides windowSizeClass,
@@ -423,123 +880,104 @@ fun MelodiaApp() {
         modifier = Modifier
             .fillMaxSize()
             .onSizeChanged { playerSheet.onScreenSizeChanged(it.height.toFloat()) }
-            // 皮肤的根画布：没有皮肤背景图时等价于纯色，有背景图时在这里一次性铺满
-            .skinBackdropRoot(MelodiaColors.Background)
-    ) {
-        // 侧边栏改用 Material3 的 ModalNavigationDrawer 承载。
-        //
-        // 原来是自己拿 AnchoredDraggableState + 平移手写的抽屉：主内容层平移让出位置，
-        // 面板露出来了但点击仍被主内容层吃掉，调布局偏移、调 zIndex 都没根治。
-        // 现在面板是独立的 drawerContent 槽，命中关系由官方实现保证；
-        // 边缘手势、遮罩点击关闭、开合动画全部内置。
-        // 视觉上从「内容被推开」变为「面板盖上来 + 遮罩变暗」。
-        ModalNavigationDrawer(
-            drawerState = sidebar.drawerState,
-            // 未登录也允许拉出侧栏：设置、下载管理等入口不需要账号
-            gesturesEnabled = !isEdgeSwipeBlocked,
-            scrimColor = Color.Transparent,
-            drawerContent = {
-                // 自己接管面板位置与遮罩，不用框架的 spring（StiffnessMediumLow，
-                // 滑完要 400ms+，用户等不起）。
-                // - 面板位置由 offset 驱动：命中区域跟着一起移动，露出多少点多少
-                // - 时长压到 150ms：推入推出的过程还在，但不拖沓
-                // - 遮罩在滑动期间不接收点击：否则点早了会把刚开的抽屉关掉，
-                //   表现就是「点了还消失了」
-                val slide by animateFloatAsState(
-                    targetValue = if (sidebar.isOpen) 1f else 0f,
-                    animationSpec = tween(150, easing = FastOutSlowInEasing),
-                    label = "sidebar_slide"
-                )
-                val drawerWidthPx = with(density) { SidebarWidth.toPx() }
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.45f * slide))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                enabled = slide > 0.99f
-                            ) { sidebar.close() }
-                    )
-                    Box(
-                        modifier = Modifier
-                            .width(SidebarWidth)
-                            .fillMaxHeight()
-                            .offset { IntOffset((-(1f - slide) * drawerWidthPx).roundToInt(), 0) }
-                    ) {
-                        ModalDrawerSheet(
-                            modifier = Modifier
-                                .width(SidebarWidth)
-                                .fillMaxHeight(),
-                            drawerShape = RectangleShape,
-                            drawerContainerColor = MelodiaColors.Background
-                        ) {
-                            ProfileSidebar(
-                                userProfile = userProfile,
-                                onLogin = { showSidebarLoginSheet = true },
-                                onLogout = {
-                                    viewModel.logout()
-                                    sidebar.close()
-                                },
-                                onDismiss = { sidebar.close() },
-                                onNavigateToProfile = { uid -> sidebar.closeThen { navigation.openProfile(uid) } },
-                                // 私人 FM 没有独立页面，界面就是全屏播放页。
-                                // 必须先等第一批歌拉回来再打开播放器：先开会先闪一下上一首的封面和背景，
-                                // 几百毫秒后才跳到 FM 的第一首——就是这个项目一直在修的「闪回」。
-                                onNavigateToFm = {
-                                    sidebar.closeThen {
-                                        // 首次起流要等接口，这期间界面不会有任何变化，
-                                        // 不给一句提示会像点了没反应
-                                        if (!fmViewModel.isActive()) {
-                                            ToastManager.showToast("正在挑选歌曲…")
-                                        }
-                                        fmEntryScope.launch {
-                                            if (fmViewModel.startIfNeeded()) {
-                                                if (usePanel) {
-                                                    isPanelExpanded = true
-                                                } else {
-                                                    playerSheet.animateTo(true, 0f)
-                                                }
-                                            } else {
-                                                ToastManager.showToast("私人 FM 加载失败，稍后再试")
-                                            }
-                                        }
-                                    }
-                                },
-                                onNavigateToRecentPlay = { sidebar.closeThen { navigation.openRecentPlay() } },
-                                onNavigateToListenData = { sidebar.closeThen { navigation.openListenData() } },
-                                onNavigateToCloud = { sidebar.closeThen { navigation.openCloud() } },
-                                onNavigateToDownloads = { sidebar.closeThen { navigation.openDownloads() } },
-                                onNavigateToMessage = { sidebar.closeThen { navigation.openMessage() } },
-                                onNavigateToSettings = { sidebar.closeThen { navigation.navigateTo(Screen.Settings) } },
-                                isDarkTheme = isDarkTheme,
-                                onToggleTheme = { sidebar.closeThen(onToggleTheme) }
-                            )
+            .pointerInput(sidebar.isOpen) {
+                val edgeWidthPx = with(density) { 32.dp.toPx() }
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val down = event.changes.firstOrNull { it.changedToDown() }
+                        if (down != null) {
+                            sidebar.onPointerDown(down.position.x, edgeWidthPx)
+                        } else {
+                            event.changes.firstOrNull()?.let { sidebar.onRootPointerChange(it) }
+                        }
+                        if (event.changes.all { !it.pressed }) {
+                            sidebar.onPointerUp()
                         }
                     }
                 }
             }
+            .nestedScroll(sidebar.homeHandoffConnection)
+            .anchoredDraggable(
+                state = sidebar.draggableState,
+                orientation = Orientation.Horizontal,
+                enabled = isDrawerDraggable
+            )
+            .skinBackdropRoot(MelodiaColors.Background)
+    ) {
+        DragBadgeOverlayHost(modifier = Modifier.fillMaxSize()) {
+        // 1. 侧边栏层 (位于最底层或同步移动)
+        Box(
+            modifier = Modifier
+                .width(SidebarWidth)
+                .fillMaxHeight()
+                .graphicsLayer {
+                    translationX = sidebar.offsetX - sidebar.widthPx
+                    alpha = 0.5f + (0.5f * sidebar.progress)
+                }
         ) {
+            ProfileSidebar(
+                userProfile = userProfile,
+                accounts = accounts,
+                privateUnreadCount = privateUnreadCount,
+                conversationPreview = conversationPreview,
+                onDismissUnread = { privateUnreadMonitor.markAllRead() },
+                onDismissConversationUnread = conversationPreviewStore::markRead,
+                onLogin = {
+                    sidebarLoginAddAccount = false
+                    showSidebarLoginSheet = true
+                },
+                onAddAccount = {
+                    sidebarLoginAddAccount = true
+                    showSidebarLoginSheet = true
+                },
+                onSwitchAccount = { uid ->
+                    accountScope.launch {
+                        val target = accounts.firstOrNull { it.uid == uid }
+                        if (accountSwitcher.switchTo(uid) && target != null) {
+                            ToastManager.showToast("已切换至 ${target.nickname}")
+                        }
+                    }
+                },
+                onDismiss = { sidebar.close() },
+                // 先收起侧栏再跳转，侧栏动画与页面切换动画叠加会明显掉帧
+                onNavigateToProfile = { uid -> sidebar.closeThen { navigation.openProfile(uid) } },
+                onNavigateToRecentPlay = { sidebar.closeThen { navigation.openRecentPlay() } },
+                onNavigateToListenData = { sidebar.closeThen { navigation.openListenData() } },
+                onNavigateToCloud = { sidebar.closeThen { navigation.openCloud() } },
+                onNavigateToDownloads = { sidebar.closeThen { navigation.openDownloads() } },
+                onNavigateToMessage = { sidebar.closeThen { navigation.openMessage() } },
+                onOpenPrivateChat = { uid -> sidebar.closeThen { navigation.openPrivateChat(uid) } },
+                onNavigateToSettings = { sidebar.closeThen { navigation.navigateTo(Screen.Settings) } },
+                // 私人 FM 没有独立页面：入口只负责把流起起来，界面交给全屏播放页
+                onNavigateToFm = {
+                    sidebar.closeThen {
+                        // 首次起流要等接口，这期间界面不会有任何变化，不给提示会像点了没反应
+                        if (playContext != PlaybackController.CONTEXT_PERSONAL_FM) {
+                            ToastManager.showToast("正在挑选歌曲…")
+                        }
+                        openPlayerOnFmStart = true
+                        viewModel.startPersonalFm()
+                    }
+                },
+                isDarkTheme = isDarkTheme,
+                onToggleTheme = onToggleTheme
+            )
+        }
 
-        // 2. 主页面内容层（不再平移，侧边栏是盖在上面的独立浮层）
-        // 侧栏的「层次感」由这里承担：抽屉打开时主内容轻微后退并压暗，
-        // 视觉上像被推开一点，但主内容本身不参与命中（遮罩在它上面），所以安全
-        val contentRecede by animateFloatAsState(
-            targetValue = if (sidebar.isOpen) 1f else 0f,
-            animationSpec = tween(220, easing = FastOutSlowInEasing),
-            label = "content_recede"
-        )
+        // 2. 主页面内容层
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer {
-                    val s = 1f - 0.04f * contentRecede
-                    scaleX = s
-                    scaleY = s
-                }
                 .onSizeChanged { contentLayerWidth = with(density) { it.width.toDp() } }
-                .background(if (isPanelDocked) MelodiaColors.WindowBackground else MelodiaColors.Background)
+                .graphicsLayer {
+                    translationX = sidebar.offsetX
+                    clip = true
+                    shape = RoundedCornerShape((sidebar.progress * 32).dp)
+                    shadowElevation = (sidebar.progress * 30f)
+                }
+                // 面板展开时画布压暗一档，靠缝隙处的明度差勾出两张卡片轮廓
+                .background(if (isPanelDocked) MelodiaColors.CanvasFill else MelodiaColors.ShellFill)
         ) {
             // 双卡片模式下靠屏幕边一侧只留 sm，靠面板一侧让出面板宽度 + 两侧间距
             val edgeGap = if (isPanelDocked) MelodiaSpacing.sm else 0.dp
@@ -581,6 +1019,7 @@ fun MelodiaApp() {
                                 MelodiaNavHost(
                                     currentEntry = navigation.currentEntry,
                                     liveEntryIds = navigation.liveEntryIds,
+                                    backGestureState = pageBackGesture,
                                     homeViewModel = viewModel,
                                     homeTab = navigation.homeTab,
                                     showMusicNewWorks = navigation.showMusicNewWorks,
@@ -593,12 +1032,20 @@ fun MelodiaApp() {
                                     onNavigateToPlaylistCategory = { category -> navigation.openPlaylistCategory(category) },
                                     onNavigateToProfile = { uid -> navigation.openProfile(uid) },
                                     onNavigateToFollowList = { uid, mode -> navigation.openFollowList(uid, mode) },
+                                    onNavigateToPrivateChat = { uid -> navigation.openPrivateChat(uid) },
                                     onHomeTabSelected = { navigation.selectHomeTab(it) },
                                     onShowMusicNewWorksChanged = { navigation.updateShowMusicNewWorks(it) },
                                     onNavigateToSearch = { navigation.openSearch(autoFocus = true) },
                                     onNavigateToLocalMusic = { navigation.openLocalMusic() },
                                     onNavigateToScreen = { navigation.navigateTo(it) },
                                     onOpenRecognition = { showRecognition = true },
+                                    onOpenPlayer = {
+                                        if (usePanel) {
+                                            openPanel()
+                                        } else {
+                                            playerSheet.animateTo(true, 0f)
+                                        }
+                                    },
                                     onBack = { handleBack() }
                                 )
                             }
@@ -619,6 +1066,7 @@ fun MelodiaApp() {
                             modifier = Modifier.align(Alignment.BottomCenter),
                             currentScreen = navigation.currentScreen,
                             showCreateSheet = showCreateSheet,
+                            createBackDismissState = createBackDismissState,
                             isLoginScreenVisible = isLoginScreenVisible || showSidebarWebLogin,
                             isMiniPlayerHidden = miniPlayerSuppressor.requestCount > 0,
                             isPanelDocked = isPanelDocked,
@@ -665,6 +1113,20 @@ fun MelodiaApp() {
                             onOverlayHeightChanged = { bottomOverlayHeight = it }
                         )
 
+                        // 侧边栏打开时的遮罩与点击收起事件；进度只在绘制阶段读取，动画期间不触发重组
+                        if (isSidebarScrimVisible) {
+                            val scrimColor = MelodiaColors.Scrim
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .drawBehind { drawRect(scrimColor.copy(alpha = 0.4f * sidebar.progress)) }
+                                    .pressable(
+                                        style = MelodiaPress.None,
+                                        enabled = sidebar.isOpen,
+                                        onClick = { sidebar.close() }
+                                    )
+                            )
+                        }
                     }
                 }
 
@@ -754,16 +1216,20 @@ fun MelodiaApp() {
                             isPanelFullscreen = false
                             navigation.openProfile(uid)
                         },
+                        onNavigateToPrivateChat = { uid ->
+                            isPanelFullscreen = false
+                            navigation.openPrivateChat(uid)
+                        },
                         isFullscreen = isPanelFullscreen,
                         onToggleFullscreen = { isPanelFullscreen = !isPanelFullscreen },
                         fullscreenProgress = { panelFullscreen.value },
                         // 与上面铺开宽度的计算一致：左右各留 sm
                         fullscreenWidth = contentLayerWidth - MelodiaSpacing.sm * 2,
+                        isPlayerVisible = isPanelVisible && !showRecognition && !showSidebarWebLogin,
                         onLyricsFullScreenChange = { isLyricsFullScreen = it }
                     )
                 }
             }
-        }
         }
 
         MelodiaFullPlayerOverlay(
@@ -771,6 +1237,7 @@ fun MelodiaApp() {
             screenHeightPx = playerSheet.screenHeightPx,
             isPlayerOpen = playerSheet.isOpen,
             playerOffsetY = { playerSheet.offsetY },
+            backShrinkFraction = { playerSheet.backShrinkFraction },
             isPlaying = isPlaying,
             currentPositionProvider = currentPositionProvider,
             duration = duration,
@@ -805,6 +1272,12 @@ fun MelodiaApp() {
             onNavigateToProfile = { uid ->
                 navigation.navigateFromPlayer(currentTrack?.mediaId) {
                     navigation.openProfile(uid)
+                }
+                playerSheet.animateTo(false, 0f)
+            },
+            onNavigateToPrivateChat = { uid ->
+                navigation.navigateFromPlayer(currentTrack?.mediaId) {
+                    navigation.openPrivateChat(uid)
                 }
                 playerSheet.animateTo(false, 0f)
             },
@@ -873,7 +1346,8 @@ fun MelodiaApp() {
                 onLoginSuccess = { cookies ->
                     showSidebarLoginSheet = false
                     viewModel.handleLoginSuccess(cookies)
-                }
+                },
+                addAccount = sidebarLoginAddAccount
             )
         }
 
@@ -887,9 +1361,62 @@ fun MelodiaApp() {
                 onLoginSuccess = { cookies ->
                     showSidebarWebLogin = false
                     viewModel.handleLoginSuccess(cookies)
-                }
+                },
+                addAccount = sidebarLoginAddAccount
             )
         }
+
+        }
+
+        // 4.5 剪贴板识别到的网易云链接轻量浮动条
+        ClipboardLinkFloatingCard(
+            link = clipboardLink,
+            previewState = clipboardPreviewState,
+            onPrimaryAction = {
+                val current = songLinkRequests.takeClipboard() ?: return@ClipboardLinkFloatingCard
+                val readyTrack = (clipboardPreviewState as? LinkPreviewState.Ready)?.preview?.track
+                if (current.target is SongLinkTarget.Song && readyTrack != null) {
+                    playerManager.playLinkTrack(readyTrack, "链接")
+                    if (currentUsePanel) {
+                        openPanel()
+                    } else {
+                        playerSheet.animateTo(true, 0f)
+                    }
+                } else {
+                    songLinkRequests.request(current.target)
+                }
+            },
+            onEnqueueNext = {
+                val current = songLinkRequests.takeClipboard() ?: return@ClipboardLinkFloatingCard
+                val songTarget = current.target as? SongLinkTarget.Song ?: return@ClipboardLinkFloatingCard
+                val readyTrack = (clipboardPreviewState as? LinkPreviewState.Ready)?.preview?.track
+                if (readyTrack != null) {
+                    playerManager.enqueueLinkTrackNext(readyTrack)
+                    ToastManager.showToast("已添加至下一首播放")
+                } else {
+                    scope.launch {
+                        val track = playbackRepository.getSongDetail(songTarget.id).first().getOrNull()
+                        if (track != null) {
+                            playerManager.enqueueLinkTrackNext(track)
+                            ToastManager.showToast("已添加至下一首播放")
+                        } else {
+                            ToastManager.showToast("这首歌打不开，可能已下架")
+                        }
+                    }
+                }
+            },
+            onDismiss = { songLinkRequests.dismissClipboard() },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .zIndex(2f)
+                .padding(
+                    bottom = if (playerSheet.isOpen) {
+                        navigationBarBottom + 16.dp
+                    } else {
+                        (if (bottomOverlayHeight > 0.dp) bottomOverlayHeight else navigationBarBottom) + 8.dp
+                    }
+                )
+        )
 
         // 5. 全局自定义 Toast 提示
         MelodiaToastHost(toastMessage = toastMessage)
@@ -918,6 +1445,9 @@ fun MelodiaApp() {
                 onSaveNewCollection = { name, id -> viewModel.createPlaylistAndAddSong(name, id) }
             )
         }
+
+        // 8. 一起听房间全局弹窗，聊天页与播放页共用
+        ListenTogetherRoomHost()
     }
     }
 }

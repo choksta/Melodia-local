@@ -31,6 +31,7 @@ import com.lin0721.linmusic.core.model.CommentItem
 import com.lin0721.linmusic.core.ui.skin.CoverGroup
 import com.lin0721.linmusic.core.ui.skin.isCoverBackdrop
 import com.lin0721.linmusic.core.ui.theme.ImmersiveTheme
+import com.lin0721.linmusic.core.ui.theme.KeepScreenOnWhile
 import com.lin0721.linmusic.core.ui.theme.LightStatusBarIconsWhile
 import com.lin0721.linmusic.core.ui.theme.LocalUiMotion
 import com.lin0721.linmusic.core.ui.theme.MelodiaColors
@@ -50,7 +51,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import com.lin0721.linmusic.core.ui.back.MelodiaDismissBackHandler
+import com.lin0721.linmusic.core.ui.back.backDismissPreview
+import com.lin0721.linmusic.core.ui.back.rememberBackDismissState
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -75,7 +80,6 @@ import com.lin0721.linmusic.core.ui.components.ToastManager
 import com.lin0721.linmusic.core.ui.theme.playerBackdrop
 import com.lin0721.linmusic.core.ui.theme.themedCoverBase
 import com.lin0721.linmusic.feature.player.share.LyricShareSheet
-import com.lin0721.linmusic.feature.fm.ui.FmViewModel
 import com.lin0721.linmusic.feature.settings.ui.AudioEffectSheet
 import com.lin0721.linmusic.core.ui.theme.FallbackBackdropPalette
 import com.lin0721.linmusic.core.ui.theme.MelodiaOrientationClass
@@ -120,6 +124,7 @@ fun FullPlayerScreen(
     onAlbumClick: (Long) -> Unit,
     onPlaylistClick: (Long) -> Unit = {},
     onNavigateToProfile: (Long) -> Unit = {},
+    onNavigateToPrivateChat: (Long) -> Unit = {},
     onDragClose: (Float, Float) -> Unit = { _, _ -> },
     // 手机全屏：封面按可用高度收缩，快捷操作行需让开导航栏
     fitCoverAboveNavigationBar: Boolean = false,
@@ -134,6 +139,7 @@ fun FullPlayerScreen(
     // 铺开过程中两套排版各按最终宽度排一次、交叉淡入淡出；竖屏全屏沿用竖排列表，按比例放宽并居中
     sidebarFullscreenProgress: (() -> Float)? = null,
     fullscreenContentWidth: Dp = Dp.Unspecified,
+    isPlayerVisible: Boolean = isPlayerOpen,
     onLyricsFullScreenChange: (Boolean) -> Unit = {},
     onLyricsControlsVisibilityChange: (Boolean) -> Unit = {}
 ) {
@@ -156,6 +162,7 @@ fun FullPlayerScreen(
             onAlbumClick = onAlbumClick,
             onPlaylistClick = onPlaylistClick,
             onNavigateToProfile = onNavigateToProfile,
+            onNavigateToPrivateChat = onNavigateToPrivateChat,
             onDragClose = onDragClose,
             fitCoverAboveNavigationBar = fitCoverAboveNavigationBar,
             fitCoverToViewport = fitCoverToViewport,
@@ -164,6 +171,7 @@ fun FullPlayerScreen(
             isSidebarFullscreen = isSidebarFullscreen,
             sidebarFullscreenProgress = sidebarFullscreenProgress,
             fullscreenContentWidth = fullscreenContentWidth,
+            isPlayerVisible = isPlayerVisible,
             onLyricsFullScreenChange = onLyricsFullScreenChange,
             onLyricsControlsVisibilityChange = onLyricsControlsVisibilityChange
         )
@@ -190,6 +198,7 @@ private fun FullPlayerScreenContent(
     onAlbumClick: (Long) -> Unit,
     onPlaylistClick: (Long) -> Unit = {},
     onNavigateToProfile: (Long) -> Unit = {},
+    onNavigateToPrivateChat: (Long) -> Unit = {},
     onDragClose: (Float, Float) -> Unit = { _, _ -> },
     // 手机全屏：封面按可用高度收缩，快捷操作行需让开导航栏
     fitCoverAboveNavigationBar: Boolean = false,
@@ -204,6 +213,7 @@ private fun FullPlayerScreenContent(
     // 铺开过程中两套排版各按最终宽度排一次、交叉淡入淡出；竖屏全屏沿用竖排列表，按比例放宽并居中
     sidebarFullscreenProgress: (() -> Float)? = null,
     fullscreenContentWidth: Dp = Dp.Unspecified,
+    isPlayerVisible: Boolean = isPlayerOpen,
     onLyricsFullScreenChange: (Boolean) -> Unit = {},
     onLyricsControlsVisibilityChange: (Boolean) -> Unit = {}
 ) {
@@ -213,8 +223,6 @@ private fun FullPlayerScreenContent(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val viewModel: PlayerViewModel = koinViewModel()
-    // FM 没有独立页面，起流/不喜欢/换一批都由播放页直接接管，和侧栏入口共用同一个实例
-    val fmViewModel: FmViewModel = koinViewModel()
     val settingsPreferences: SettingsPreferences = koinInject()
     // 输出设备切换为 Android 专属能力，不在跨平台接口里
     val playerManager: PlayerManager = koinInject()
@@ -233,6 +241,8 @@ private fun FullPlayerScreenContent(
     val activeLyricIndices by viewModel.activeLyricIndices.collectAsStateWithLifecycle()
     val playContext by viewModel.playerManager.playContext.collectAsStateWithLifecycle()
     val playSource by viewModel.playerManager.playSource.collectAsStateWithLifecycle()
+    val personalFmMode by viewModel.personalFmMode.collectAsStateWithLifecycle()
+    val isPersonalFm = playContext == PlaybackController.CONTEXT_PERSONAL_FM
     val sleepTimerRemaining by viewModel.sleepTimerRemaining.collectAsStateWithLifecycle()
     val commentsState by viewModel.commentsState.collectAsStateWithLifecycle()
     val activeQuality by viewModel.activeQuality.collectAsStateWithLifecycle()
@@ -244,19 +254,7 @@ private fun FullPlayerScreenContent(
     val previousQueueItem by viewModel.playerManager.previousQueueItem.collectAsStateWithLifecycle()
     val nextQueueItem by viewModel.playerManager.nextQueueItem.collectAsStateWithLifecycle()
     var showQueueSheet by remember { mutableStateOf(false) }
-    // FM 的两个专属动作：不喜欢先上报垃圾桶再跳下一首；换一批则重开一条推荐流
-    val fmDislike: () -> Unit = remember(fmViewModel) {
-        {
-            fmViewModel.dislike()
-            ToastManager.showToast("已标记不喜欢")
-        }
-    }
-    val fmRefresh: () -> Unit = remember(fmViewModel) {
-        {
-            fmViewModel.startNewStream()
-            ToastManager.showToast("正在换一批推荐")
-        }
-    }
+    var showPersonalFmModeSheet by remember { mutableStateOf(false) }
     var isLyricsFullScreen by remember { mutableStateOf(false) }
     // 手机全屏歌词盖住状态栏且是有色底，浅色主题下状态栏图标切为浅色
     LightStatusBarIconsWhile(
@@ -280,8 +278,18 @@ private fun FullPlayerScreenContent(
     var showAudioEffectSheet by remember { mutableStateOf(false) }
     var showShareCard by remember { mutableStateOf(false) }
     var showTimerSheet by remember { mutableStateOf(false) }
+    val sleepTimerRequests: com.lin0721.linmusic.core.player.SleepTimerRequests = koinInject()
+    val pendingOpenTimer by sleepTimerRequests.pendingOpenTimer.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingOpenTimer, isPlayerVisible) {
+        if (pendingOpenTimer && isPlayerVisible && sleepTimerRequests.consumeOpenTimer()) {
+            showTimerSheet = true
+        }
+    }
     var showCommentsSheet by remember { mutableStateOf(false) }
     var showCommentFloor by remember { mutableStateOf(false) }
+    val composerState by viewModel.composerState.collectAsStateWithLifecycle()
+    val floorState by viewModel.floorState.collectAsStateWithLifecycle()
+    val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
     var collectSongId by remember { mutableStateOf<Long?>(null) }
     var showOutputDeviceSheet by remember { mutableStateOf(false) }
     var showDownloadQualitySheet by remember { mutableStateOf(false) }
@@ -342,11 +350,18 @@ private fun FullPlayerScreenContent(
         }
     }
 
+    val lyricsBackDismissState = rememberBackDismissState()
+    val commentsBackDismissState = rememberBackDismissState()
+    val commentFloorBackDismissState = rememberBackDismissState()
+
     BackHandler(enabled = showQueueSheet) {
         showQueueSheet = false
     }
 
-    BackHandler(enabled = isLyricsFullScreen) {
+    MelodiaDismissBackHandler(
+        enabled = isLyricsFullScreen,
+        state = lyricsBackDismissState
+    ) {
         isLyricsFullScreen = false
     }
 
@@ -358,11 +373,17 @@ private fun FullPlayerScreenContent(
         showTimerSheet = false
     }
 
-    BackHandler(enabled = showCommentsSheet) {
+    MelodiaDismissBackHandler(
+        enabled = showCommentsSheet,
+        state = commentsBackDismissState
+    ) {
         showCommentsSheet = false
     }
 
-    BackHandler(enabled = showCommentFloor) {
+    MelodiaDismissBackHandler(
+        enabled = showCommentFloor,
+        state = commentFloorBackDismissState
+    ) {
         showCommentFloor = false
     }
 
@@ -376,6 +397,10 @@ private fun FullPlayerScreenContent(
 
     BackHandler(enabled = showDownloadQualitySheet) {
         showDownloadQualitySheet = false
+    }
+
+    BackHandler(enabled = showPersonalFmModeSheet) {
+        showPersonalFmModeSheet = false
     }
 
     var showLyricsSettingsSheet by remember { mutableStateOf(false) }
@@ -393,6 +418,7 @@ private fun FullPlayerScreenContent(
     val amllLyricsEnabled by settingsPreferences.amllLyricsEnabled.collectAsStateWithLifecycle(initialValue = true)
     val fullScreenLyricLineSpacing by settingsPreferences.fullScreenLyricLineSpacing.collectAsStateWithLifecycle(initialValue = 24)
     val fullScreenLyricSecondarySpacing by settingsPreferences.fullScreenLyricSecondarySpacing.collectAsStateWithLifecycle(initialValue = 6)
+    val fullScreenLyricKeepScreenOn by settingsPreferences.fullScreenLyricKeepScreenOn.collectAsStateWithLifecycle(initialValue = false)
 
     val hasTranslation = remember(songDetailState.lyrics) { songDetailState.lyrics.any { it.translation != null } }
     val hasRoma = remember(songDetailState.lyrics) { songDetailState.lyrics.any { it.roma != null } }
@@ -421,6 +447,15 @@ private fun FullPlayerScreenContent(
 
     // 宽屏两栏的歌词区当前是否在组合中（滑到卡片区后移出）
     var isWideLyricsVisible by remember { mutableStateOf(false) }
+
+    KeepScreenOnWhile(
+        shouldKeepScreenOn(
+            keepScreenOnEnabled = fullScreenLyricKeepScreenOn,
+            isPlayerVisible = isPlayerVisible && !showCommentsSheet && !showCommentFloor && !showShareCard,
+            isLyricsScreenVisible = isLyricsFullScreen || isWideLyricsVisible,
+            isPlaying = isPlaying
+        )
+    )
 
     // 全屏歌词与宽屏歌词区的逐字滚动都需要更密的进度回调
     DisposableEffect(isLyricsFullScreen || isWideLyricsVisible, isPlaying) {
@@ -699,7 +734,10 @@ private fun FullPlayerScreenContent(
             lyricsCoverColors = lyricsCoverColors,
             sleepTimerActive = sleepTimerRemaining > 0L,
             onSleepTimerClick = { showTimerSheet = true },
-            onCommentsClick = { showCommentsSheet = true }
+            onCommentsClick = { showCommentsSheet = true },
+            personalFmMode = personalFmMode,
+            onPersonalFmModeClick = { showPersonalFmModeSheet = true },
+            onTrashFm = viewModel::trashCurrentFmSong
         )
     } else {
         null
@@ -783,8 +821,10 @@ private fun FullPlayerScreenContent(
                     modifier = Modifier
                         .fillMaxSize()
                         .then(if (pluginFullLayout?.canvasScript == null) Modifier.haze(hazeState) else Modifier)
-                        // 全屏歌词完整盖住时整页不可见，跳过绘制，避免随进度刷新反复重绘并上传封面贴图
-                        .drawWithContent { if (!lyricsCoverage.isCovering) drawContent() },
+                        // 全屏歌词完整盖住且未处于返回跟手时整页不可见，跳过绘制；开始跟手缩小时立即恢复绘制以透出底层播放页
+                        .drawWithContent {
+                            if (!lyricsCoverage.isCovering || lyricsBackDismissState.fraction > 0f) drawContent()
+                        },
                     contentPadding = PaddingValues(
                         start = startInset,
                         end = endInset,
@@ -846,8 +886,9 @@ private fun FullPlayerScreenContent(
                         onToggleRepeat = viewModel.playerManager::toggleRepeat,
                         onDisableRoaming = { viewModel.playerManager.disableRoaming() },
                         onDisableIntelligence = { viewModel.playerManager.disableIntelligence() },
-                        onDislike = fmDislike,
-                        onRefreshStream = fmRefresh,
+                        personalFmMode = personalFmMode,
+                        onPersonalFmModeClick = { showPersonalFmModeSheet = true },
+                        onTrashFm = viewModel::trashCurrentFmSong,
                         onOutputDeviceClick = { showOutputDeviceSheet = true },
                         onQueueClick = { showQueueSheet = true },
                         onShareClick = { shareCurrentSong() },
@@ -970,7 +1011,10 @@ private fun FullPlayerScreenContent(
                         onArtistClick = openSongArtist,
                         onAlbumClick = openSongAlbum,
                         podcast = podcast,
-                        onToggleSubscribe = viewModel::toggleSubscribe
+                        onToggleSubscribe = viewModel::toggleSubscribe,
+                        isPersonalFm = isPersonalFm,
+                        personalFmMode = personalFmMode,
+                        onPersonalFmModeClick = { showPersonalFmModeSheet = true }
                     )
                     ProgressSection(
                         currentPositionProvider = currentPositionProvider,
@@ -990,10 +1034,10 @@ private fun FullPlayerScreenContent(
                         onDisableRoaming = { viewModel.playerManager.disableRoaming() },
                         isIntelligence = playContext == "intelligence",
                         onDisableIntelligence = { viewModel.playerManager.disableIntelligence() },
+                        isPersonalFm = isPersonalFm,
+                        onTrashFm = viewModel::trashCurrentFmSong,
                         showModeButtons = !podcast.isPodcast,
-                        isFm = playContext == PlaybackController.CONTEXT_FM,
-                        onDislike = fmDislike,
-                        onRefreshStream = fmRefresh,
+                        // 有播放意图但还没真正出声 = 正在缓冲
                         isBuffering = playWhenReady && !isPlaying
                     )
                     ActionButtons(
@@ -1059,6 +1103,9 @@ private fun FullPlayerScreenContent(
             )
         }
 
+        val shareSongId = currentTrack.mediaId.toLongOrNull()
+            ?.takeIf { it > 0 && !songDetailState.isLocalOnly && !podcast.isPodcast }
+
         FullPlayerLyricsOverlay(
             visible = isLyricsFullScreen,
             coverage = lyricsCoverage,
@@ -1070,6 +1117,7 @@ private fun FullPlayerScreenContent(
             artist = artist,
             coverUrl = coverUrl,
             songLink = songLink,
+            songId = shareSongId,
             hazeState = hazeState,
             isPlaying = isPlaying,
             currentPositionProvider = currentPositionProvider,
@@ -1087,11 +1135,18 @@ private fun FullPlayerScreenContent(
             onToggleShuffle = viewModel.playerManager::toggleShuffle,
             onToggleRepeat = viewModel.playerManager::toggleRepeat,
             onMoreClick = { showMoreOptionsSheet = true },
+            isPersonalFm = isPersonalFm,
+            onTrashFm = viewModel::trashCurrentFmSong,
+            onNavigateToPrivateChat = { uid ->
+                isLyricsFullScreen = false
+                onNavigateToPrivateChat(uid)
+            },
             pluginContent = if (pluginLyricsLayout != null && !pluginLyricsLayout.hostContent && pluginParts != null) {
                 { slots -> LyricsPagePluginContent(pluginLyricsLayout, pluginParts, isLandscape, slots) }
             } else {
                 null
-            }
+            },
+            modifier = Modifier.backDismissPreview(lyricsBackDismissState, TransformOrigin(0.5f, 1f))
         )
 
         if (showShareCard) {
@@ -1103,8 +1158,10 @@ private fun FullPlayerScreenContent(
                 coverUrl = coverUrl,
                 durationMs = duration,
                 songLink = songLink,
+                songId = shareSongId,
                 initialKind = ShareCardKind.SONG,
-                onDismiss = { showShareCard = false }
+                onDismiss = { showShareCard = false },
+                onNavigateToPrivateChat = onNavigateToPrivateChat
             )
         }
 
@@ -1136,6 +1193,8 @@ private fun FullPlayerScreenContent(
             activeQuality = activeQuality,
             showMiniLyric = showMiniLyric,
             isPodcast = podcast.isPodcast,
+            personalFmMode = personalFmMode,
+            showPersonalFmModeSheet = showPersonalFmModeSheet,
             onToggleMiniLyric = viewModel::toggleMiniLyric,
             onPlayAtIndex = { viewModel.playerManager.playAtIndex(it) },
             onRemoveAtIndex = { viewModel.playerManager.removeFromQueue(it) },
@@ -1147,6 +1206,10 @@ private fun FullPlayerScreenContent(
             },
             onDisableRoaming = { viewModel.playerManager.disableRoaming() },
             onDisableIntelligence = { viewModel.playerManager.disableIntelligence() },
+            onDisablePersonalFm = viewModel::disablePersonalFm,
+            onPersonalFmModeClick = { showPersonalFmModeSheet = true },
+            onSelectPersonalFmMode = viewModel::switchPersonalFmMode,
+            onPersonalFmModeDismiss = { showPersonalFmModeSheet = false },
             onQueueDismiss = { showQueueSheet = false },
             onToggleLike = viewModel::toggleLike,
             onAlbumClick = {
@@ -1213,19 +1276,39 @@ private fun FullPlayerScreenContent(
             enter = slideInVertically(uiTween(ScreenSlideDurationMs)) { it } + fadeIn(uiTween(ScreenSlideDurationMs)),
             exit = slideOutVertically(uiTween(ScreenSlideDurationMs)) { it } + fadeOut(uiTween(ScreenSlideDurationMs))
         ) {
-            FullPlayerCommentsSheet(
-                viewModel = viewModel,
-                commentsState = commentsState,
-                onBack = { showCommentsSheet = false },
-                onUserClick = { uid ->
-                    showCommentsSheet = false
-                    onNavigateToProfile(uid)
-                },
-                onExpandFloor = { comment ->
-                    showCommentFloor = true
-                    viewModel.openCommentFloor(comment)
-                }
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .backDismissPreview(commentsBackDismissState, TransformOrigin(0.5f, 1f))
+            ) {
+                CommentFullScreen(
+                    commentsState = commentsState,
+                    currentUserId = userProfile?.uid,
+                    composerState = composerState,
+                    onBack = { showCommentsSheet = false },
+                    onSortChange = viewModel::changeCommentSort,
+                    onLikeComment = viewModel::likeComment,
+                    onUserClick = { uid ->
+                        showCommentsSheet = false
+                        onNavigateToProfile(uid)
+                    },
+                    onExpandFloor = { comment ->
+                        showCommentFloor = true
+                        viewModel.openCommentFloor(comment)
+                    },
+                    onDeleteClick = { comment -> viewModel.deleteCommentItem(comment) },
+                    onSubmitComment = { content, target ->
+                        if (target != null) {
+                            viewModel.submitCommentReply(target.commentId, content)
+                        } else {
+                            viewModel.submitComment(content)
+                        }
+                    },
+                    onRequireLogin = { ToastManager.showToast("请先登录账号") },
+                    onLoadMore = viewModel::loadMoreComments,
+                    onRetry = { viewModel.retryComments() }
+                )
+            }
         }
 
         AnimatedVisibility(
@@ -1233,11 +1316,27 @@ private fun FullPlayerScreenContent(
             enter = slideInVertically(uiTween(ScreenSlideDurationMs)) { it } + fadeIn(uiTween(ScreenSlideDurationMs)),
             exit = slideOutVertically(uiTween(ScreenSlideDurationMs)) { it } + fadeOut(uiTween(ScreenSlideDurationMs))
         ) {
-            FullPlayerCommentFloorSheet(
-                viewModel = viewModel,
-                onBack = { showCommentFloor = false },
-                onUserClick = onNavigateToProfile
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .backDismissPreview(commentFloorBackDismissState, TransformOrigin(0.5f, 1f))
+            ) {
+                CommentFloorScreen(
+                    floorState = floorState,
+                    currentUserId = userProfile?.uid,
+                    composerState = composerState,
+                    onBack = { showCommentFloor = false },
+                    onLoadMore = viewModel::loadMoreCommentFloor,
+                    onSubmitReply = { parentCommentId, content ->
+                        viewModel.submitCommentReply(parentCommentId, content)
+                    },
+                    onRequireLogin = { ToastManager.showToast("请先登录账号") },
+                    onDeleteClick = { comment -> viewModel.deleteCommentItem(comment) },
+                    onLikeClick = { comment -> viewModel.likeComment(comment) },
+                    onRetry = { (floorState as? CommentFloorState.Success)?.ownerComment?.let(viewModel::openCommentFloor) },
+                    onUserClick = onNavigateToProfile
+                )
+            }
         }
 
         if (showDownloadQualitySheet) {
@@ -1310,77 +1409,22 @@ private fun FullPlayerScreenContent(
                 onAmllLyricsEnabledChange = { enabled ->
                     coroutineScope.launch { settingsPreferences.saveAmllLyricsEnabled(enabled) }
                 },
+                keepScreenOn = fullScreenLyricKeepScreenOn,
+                onKeepScreenOnChange = { enabled ->
+                    coroutineScope.launch { settingsPreferences.saveFullScreenLyricKeepScreenOn(enabled) }
+                },
                 onDismiss = { showLyricsSettingsSheet = false }
             )
         }
     }
 }
 
-/**
- * 评论面板连同它需要的状态一起收进来。
- *
- * 这三个状态（输入框状态、楼层状态、用户资料）原来挂在播放页根层，看起来无害，
- * 但输入框每敲一个字就会发一次新值 —— 于是整个播放页（封面、歌词、快捷操作行……）
- * 跟着重组一遍。收进面板内部之后，打字只重组面板自己。
- */
-@Composable
-private fun FullPlayerCommentsSheet(
-    viewModel: PlayerViewModel,
-    commentsState: CommentsState,
-    onBack: () -> Unit,
-    onUserClick: (Long) -> Unit,
-    onExpandFloor: (CommentItem) -> Unit
-) {
-    val composerState by viewModel.composerState.collectAsStateWithLifecycle()
-    val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
-    CommentFullScreen(
-        commentsState = commentsState,
-        currentUserId = userProfile?.uid,
-        composerState = composerState,
-        onBack = onBack,
-        onSortChange = viewModel::changeCommentSort,
-        onLikeComment = viewModel::likeComment,
-        onUserClick = onUserClick,
-        onExpandFloor = onExpandFloor,
-        onDeleteClick = { comment -> viewModel.deleteCommentItem(comment) },
-        onSubmitComment = { content, target ->
-            if (target != null) {
-                viewModel.submitCommentReply(target.commentId, content)
-            } else {
-                viewModel.submitComment(content)
-            }
-        },
-        onRequireLogin = { ToastManager.showToast("请先登录账号") },
-        onLoadMore = viewModel::loadMoreComments,
-        onRetry = { viewModel.retryComments() }
-    )
-}
-
-@Composable
-private fun FullPlayerCommentFloorSheet(
-    viewModel: PlayerViewModel,
-    onBack: () -> Unit,
-    onUserClick: (Long) -> Unit
-) {
-    val floorState by viewModel.floorState.collectAsStateWithLifecycle()
-    val composerState by viewModel.composerState.collectAsStateWithLifecycle()
-    val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
-    CommentFloorScreen(
-        floorState = floorState,
-        currentUserId = userProfile?.uid,
-        composerState = composerState,
-        onBack = onBack,
-        onLoadMore = viewModel::loadMoreCommentFloor,
-        onSubmitReply = { parentCommentId, content ->
-            viewModel.submitCommentReply(parentCommentId, content)
-        },
-        onRequireLogin = { ToastManager.showToast("请先登录账号") },
-        onDeleteClick = { comment -> viewModel.deleteCommentItem(comment) },
-        onLikeClick = { comment -> viewModel.likeComment(comment) },
-        onRetry = { (floorState as? CommentFloorState.Success)?.ownerComment?.let(viewModel::openCommentFloor) },
-        onUserClick = onUserClick
-    )
-}
+internal fun shouldKeepScreenOn(
+    keepScreenOnEnabled: Boolean,
+    isPlayerVisible: Boolean,
+    isLyricsScreenVisible: Boolean,
+    isPlaying: Boolean
+): Boolean = keepScreenOnEnabled && isPlayerVisible && isLyricsScreenVisible && isPlaying
 
 // 当前歌曲的实际音质短标签；档位按 songId 绑定，切歌瞬间旧歌的档位不会串到新歌上
 @Composable

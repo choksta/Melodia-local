@@ -24,14 +24,13 @@ interface PlaybackController {
     companion object {
         const val CONTEXT_INTELLIGENCE = "intelligence"
         const val CONTEXT_PODCAST = "podcast"
-
         /**
          * 私人 FM 播放上下文。
          *
-         * FM 没有独立播放器页面，它就是一条播放上下文：点侧栏入口只负责起流，
+         * FM 没有独立播放器页面，它就是一条播放上下文：点入口只负责起流，
          * 界面交给全屏播放页，靠这个标记决定来源文案与「不喜欢」按钮。
          */
-        const val CONTEXT_FM = "fm_personal"
+        const val CONTEXT_PERSONAL_FM = "personal_fm"
     }
 
     val isPlaying: StateFlow<Boolean>
@@ -74,6 +73,14 @@ interface PlaybackController {
         playContext: String? = null
     )
     fun addToPlayNext(items: List<QueueItem>)
+    fun playNextNow(item: QueueItem, startPositionMs: Long = 0L) {
+        if (queue.value.isEmpty()) {
+            playQueue(listOf(item), 0, startPositionMs = startPositionMs)
+        } else {
+            addToPlayNext(listOf(item))
+            playNext()
+        }
+    }
     fun appendToQueue(items: List<QueueItem>)
 
     // 大歌单先播后补：队列仍是 source 起播的那一份时，把后台补全的曲目接到末尾
@@ -85,6 +92,8 @@ interface PlaybackController {
     fun removeFromQueue(index: Int)
     fun moveInQueue(from: Int, to: Int)
     fun clearQueue()
+    // 切换或退出账户时停止播放并清空队列与播放上下文
+    fun stopAndClearQueue()
     fun toggleShuffle()
     fun toggleRepeat()
     fun rotatePlayMode()
@@ -100,4 +109,8 @@ interface PlaybackController {
     fun cancelPendingSkip(): Boolean
     fun disableRoaming()
     fun disableIntelligence()
+    fun startPersonalFm(items: List<QueueItem>)
+    fun disablePersonalFm()
+    fun trashCurrentFmSong()
+    fun switchPersonalFmMode(mode: PersonalFmMode)
 }

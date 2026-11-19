@@ -6,26 +6,34 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.ui.unit.TextUnit
+import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lin0721.linmusic.core.player.PersonalFmMode
 import com.lin0721.linmusic.core.ui.components.MelodiaIconButton
+import com.lin0721.linmusic.core.ui.components.PersonalFmModeOrb
 import com.lin0721.linmusic.core.ui.interaction.copyOnLongClick
+import com.lin0721.linmusic.core.ui.interaction.pressable
 import com.lin0721.linmusic.core.ui.theme.InfoCardRadius
 import com.lin0721.linmusic.core.ui.theme.LocalUiMotion
 import com.lin0721.linmusic.core.ui.theme.MelodiaColors
+import com.lin0721.linmusic.core.ui.theme.MelodiaPress
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.feature.podcast.ui.PodcastPlayerState
 
@@ -33,6 +41,43 @@ import com.lin0721.linmusic.feature.podcast.ui.PodcastPlayerState
 private const val SongInfoTextEnterMs = 220
 private const val SongInfoTextExitMs = 160
 
+// 私人FM 模式胶囊入口：左侧展示当前模式极光圆点，点击打开模式选择弹层
+@Composable
+fun PersonalFmModePill(
+    mode: PersonalFmMode,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val pillBackground = MelodiaColors.TextPrimary.copy(
+        alpha = if (MelodiaColors.IsDark) 0.12f else 0.08f
+    )
+    Row(
+        modifier = modifier
+            .pressable(MelodiaPress.Pill, shape = CircleShape) { onClick() }
+            .clip(CircleShape)
+            .background(pillBackground)
+            .padding(start = 5.dp, end = 10.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        PersonalFmModeOrb(mode = mode)
+        Text(
+            text = "${mode.displayName}模式",
+            color = MelodiaColors.TextPrimary,
+            fontSize = 11.5.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
+        )
+        Icon(
+            imageVector = Icons.Rounded.KeyboardArrowDown,
+            contentDescription = "切换FM模式",
+            tint = MelodiaColors.TextPrimary.copy(alpha = 0.75f),
+            modifier = Modifier.size(14.dp)
+        )
+    }
+}
+
+// 封面下方的歌名歌手行，右侧带收藏按钮；私人FM 上下文时在歌名上方展示模式胶囊
 // 封面下方的歌名歌手行，右侧带收藏按钮
 @Composable
 fun SongInfo(
@@ -44,7 +89,10 @@ fun SongInfo(
     onAlbumClick: (() -> Unit)? = null,
     // 播客节目：♡ 直接订阅所属电台
     podcast: PodcastPlayerState = PodcastPlayerState(),
-    onToggleSubscribe: () -> Unit = {}
+    onToggleSubscribe: () -> Unit = {},
+    isPersonalFm: Boolean = false,
+    personalFmMode: PersonalFmMode = PersonalFmMode.DEFAULT,
+    onPersonalFmModeClick: (() -> Unit)? = null
 ) {
     val motion = LocalUiMotion.current
     Row(
@@ -55,28 +103,40 @@ fun SongInfo(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 歌名和歌手整体做一次过渡：封面是左右推入的，文字如果直接换，会抢在封面滑完之前
-        // 就变成下一首，视觉上像"封面还在滑、字已经换了"。两行绑在同一个 targetState 上，
-        // 保证它们绝对同步，不会一个先到一个后到
-        AnimatedContent(
-            targetState = title to artist,
-            transitionSpec = {
-                (fadeIn(motion.tween(SongInfoTextEnterMs)) +
-                        slideInVertically(motion.tween(SongInfoTextEnterMs)) { height -> height / 4 })
-                    .togetherWith(
-                        fadeOut(motion.tween(SongInfoTextExitMs)) +
-                                slideOutVertically(motion.tween(SongInfoTextExitMs)) { height -> -height / 4 }
-                    )
-            },
-            label = "song_info_text",
+        Column(
             modifier = Modifier
                 .weight(1f)
                 .padding(end = MelodiaSpacing.md)
-        ) { (songTitle, songArtist) ->
-            Column {
-                SongTitleText(songTitle, onAlbumClick)
-                Spacer(modifier = Modifier.height(4.dp))
-                SongArtistText(songArtist, onArtistClick)
+        ) {
+            // FM 模式胶囊不参与切歌过渡：它是上下文状态，不是曲目信息
+            if (isPersonalFm && onPersonalFmModeClick != null) {
+                PersonalFmModePill(
+                    mode = personalFmMode,
+                    onClick = onPersonalFmModeClick,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+            }
+            // 歌名和歌手整体做一次过渡：封面是左右推入的，文字如果直接换，会抢在封面滑完之前
+            // 就变成下一首，视觉上像"封面还在滑、字已经换了"。两行绑在同一个 targetState 上，
+            // 保证它们绝对同步，不会一个先到一个后到
+            AnimatedContent(
+                targetState = title to artist,
+                transitionSpec = {
+                    (fadeIn(motion.tween(SongInfoTextEnterMs)) +
+                            slideInVertically(motion.tween(SongInfoTextEnterMs)) { height -> height / 4 })
+                        .togetherWith(
+                            fadeOut(motion.tween(SongInfoTextExitMs)) +
+                                    slideOutVertically(motion.tween(SongInfoTextExitMs)) { height -> -height / 4 }
+                        )
+                },
+                label = "song_info_text",
+                modifier = Modifier.fillMaxWidth()
+            ) { (songTitle, songArtist) ->
+                Column {
+                    SongTitleText(songTitle, onAlbumClick)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    SongArtistText(songArtist, onArtistClick)
+                }
             }
         }
         SongLikeButton(isLiked, onToggleLike, podcast, onToggleSubscribe, Modifier.offset(x = 10.dp))

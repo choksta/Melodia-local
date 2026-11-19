@@ -11,6 +11,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -18,9 +21,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.lin0721.linmusic.core.ui.back.PredictiveBackTransitionContainer
+import com.lin0721.linmusic.core.ui.back.predictiveContentTransform
+import com.lin0721.linmusic.core.ui.back.rememberPredictiveBackTransition
 import com.lin0721.linmusic.core.ui.theme.LocalUiMotion
 import com.lin0721.linmusic.core.ui.theme.MelodiaColors
+import com.lin0721.linmusic.feature.home.ui.HomeScreen
+import com.lin0721.linmusic.feature.home.ui.HomeViewModel
 import com.lin0721.linmusic.feature.localmusic.ui.LocalMusicNavigation
 import com.lin0721.linmusic.feature.localmusic.ui.collection.LocalAlbumScreen
 import com.lin0721.linmusic.feature.localmusic.ui.collection.LocalAlbumsScreen
@@ -33,13 +43,6 @@ import com.lin0721.linmusic.feature.localmusic.ui.playlist.LocalPlaylistScreen
 import com.lin0721.linmusic.feature.localmusic.ui.playlist.LocalPlaylistsScreen
 import com.lin0721.linmusic.feature.localmusic.ui.songs.LocalSongsScreen
 import com.lin0721.linmusic.feature.localmusic.ui.tageditor.LocalTagEditorScreen
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.lin0721.linmusic.feature.home.ui.HomeScreen
-import com.lin0721.linmusic.feature.home.ui.HomeViewModel
 import com.lin0721.linmusic.feature.profile.ui.FollowListMode
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -49,6 +52,7 @@ import com.lin0721.linmusic.feature.profile.ui.FollowListMode
 fun MelodiaNavHost(
     currentEntry: NavEntry,
     liveEntryIds: Set<Long>,
+    backGestureState: PageBackGestureState,
     homeViewModel: HomeViewModel,
     homeTab: Int,
     showMusicNewWorks: Boolean,
@@ -61,16 +65,18 @@ fun MelodiaNavHost(
     onNavigateToPlaylistCategory: (String) -> Unit,
     onNavigateToProfile: (Long) -> Unit,
     onNavigateToFollowList: (Long, FollowListMode) -> Unit,
+    onNavigateToPrivateChat: (Long) -> Unit,
     onHomeTabSelected: (Int) -> Unit,
     onShowMusicNewWorksChanged: (Boolean) -> Unit,
     onNavigateToSearch: () -> Unit,
     onNavigateToLocalMusic: () -> Unit,
     onNavigateToScreen: (Screen) -> Unit,
     onOpenRecognition: () -> Unit,
+    onOpenPlayer: () -> Unit,
     onBack: () -> Unit
 ) {
     val motion = LocalUiMotion.current
-    val localMusicNavigation = remember(onBack, onNavigateToScreen, onNavigateToArtist, onNavigateToPlaylist, onLoginScreenVisibilityChanged) {
+    val localMusicNavigation = remember(onBack, onNavigateToScreen, onNavigateToArtist, onNavigateToPlaylist, onLoginScreenVisibilityChanged, onNavigateToPrivateChat) {
         LocalMusicNavigation(
             onBack = onBack,
             openSongs = { onNavigateToScreen(Screen.LocalSongs) },
@@ -86,7 +92,8 @@ fun MelodiaNavHost(
             openOnlineArtist = onNavigateToArtist,
             openOnlineAlbum = { onNavigateToPlaylist(it, true) },
             openTagEditor = { onNavigateToScreen(Screen.LocalTagEditor(it)) },
-            onLoginScreenVisibilityChanged = onLoginScreenVisibilityChanged
+            onLoginScreenVisibilityChanged = onLoginScreenVisibilityChanged,
+            openPrivateChat = onNavigateToPrivateChat
         )
     }
     val userProfile by homeViewModel.userProfile.collectAsStateWithLifecycle()
@@ -99,42 +106,48 @@ fun MelodiaNavHost(
     }
     LaunchedEffect(liveEntryIds) { frameRegistry.reconcile() }
 
-    AnimatedContent(
-        targetState = currentEntry,
-        transitionSpec = {
-            val forward = targetState.screen != Screen.Home
-            val offsetY = 40
-            // 从侧栏点菜单跳转时，入场淡入整个跳过：新页面直接就是最终样子。
-            // 否则会先露出一段旧页面（侧栏已滑走、新页面还没显形）——「闪回主页」。
-            val skipEnter = SystemClock.uptimeMillis() - MelodiaSidebarState.lastSidebarNavAt < 300
-            if (skipEnter) {
-                EnterTransition.None togetherWith
-                        ExitTransition.None
-            } else if (forward) {
-                // 新内容只淡入、不做位移：位置从第一帧就是最终的，动画期间点哪中哪。
-                // 位移交给旧内容退场，动感还在，但不会「看着控件在动却点不中」。
-                //
-                // initialAlpha 不能是 0：新内容在旧内容之上，从全透明起步意味着
-                // 头一两百毫秒里看到的是**完整的旧页面**。从侧栏点菜单时，
-                // 侧栏已经滑走、新页面还没显形，那一瞬就是「闪回主页」。
-                // 提到 0.7 后第一帧就基本盖住了，淡入感还在，但没有空档。
-                fadeIn(motion.tween(180, easing = FastOutSlowInEasing), initialAlpha = 0.7f)
-                    .togetherWith(
-                        fadeOut(motion.tween(160, easing = FastOutSlowInEasing))
-                                + slideOutVertically(motion.tween(160, easing = FastOutSlowInEasing)) { -offsetY }
-                    )
-            } else {
-                fadeIn(motion.tween(180, easing = FastOutSlowInEasing), initialAlpha = 0.7f)
-                    .togetherWith(
-                        fadeOut(motion.tween(160, easing = FastOutSlowInEasing))
-                                + slideOutVertically(motion.tween(160, easing = FastOutSlowInEasing)) { offsetY }
-                    )
-            }.using(SizeTransform(clip = false))
-        },
+    val screenTransition = rememberPredictiveBackTransition(
+        currentState = currentEntry,
+        gestureState = backGestureState,
         label = "screen_transition"
+    )
+
+    screenTransition.AnimatedContent(
+        transitionSpec = {
+            predictiveContentTransform(backGestureState) {
+                val forward = targetState.screen != Screen.Home
+                val offsetY = 40
+                // 从侧栏点菜单跳转时，入场淡入整个跳过：新页面直接就是最终样子。
+                // 否则会先露出一段旧页面（侧栏已滑走、新页面还没显形）——「闪回主页」。
+                val skipEnter = SystemClock.uptimeMillis() - MelodiaSidebarState.lastSidebarNavAt < 300
+                if (skipEnter) {
+                    EnterTransition.None togetherWith ExitTransition.None
+                } else if (forward) {
+                    (fadeIn(motion.tween(420, delayMillis = 100, easing = FastOutSlowInEasing))
+                            + slideInVertically(motion.tween(420, delayMillis = 100, easing = FastOutSlowInEasing)) { offsetY })
+                        .togetherWith(
+                            fadeOut(motion.tween(300, easing = FastOutSlowInEasing))
+                                    + slideOutVertically(motion.tween(300, easing = FastOutSlowInEasing)) { -offsetY }
+                        )
+                } else {
+                    (fadeIn(motion.tween(420, delayMillis = 100, easing = FastOutSlowInEasing))
+                            + slideInVertically(motion.tween(420, delayMillis = 100, easing = FastOutSlowInEasing)) { -offsetY })
+                        .togetherWith(
+                            fadeOut(motion.tween(300, easing = FastOutSlowInEasing))
+                                    + slideOutVertically(motion.tween(300, easing = FastOutSlowInEasing)) { offsetY }
+                        )
+                }.using(SizeTransform(clip = false))
+            }
+        },
+        contentKey = { it.id }
     ) { entry ->
-        frameRegistry.Provide(entry) {
-            val screen = entry.screen
+        PredictiveBackTransitionContainer(
+            parentTransition = screenTransition,
+            itemState = entry,
+            gestureState = backGestureState
+        ) {
+            frameRegistry.Provide(entry) {
+                val screen = entry.screen
             when (screen) {
                 is Screen.Home -> {
                     HomeScreen(
@@ -152,6 +165,7 @@ fun MelodiaNavHost(
                         onStyleClick = { id, name -> onNavigateToScreen(Screen.Style(id, name)) },
                         onSearchClick = onNavigateToSearch,
                         onOpenSidebar = onOpenSidebar,
+                        onOpenPlayer = onOpenPlayer,
                         onLoginScreenVisibilityChanged = onLoginScreenVisibilityChanged
                     )
                 }
@@ -162,7 +176,8 @@ fun MelodiaNavHost(
                         onBack = onBack,
                         onArtistClick = onNavigateToArtist,
                         onAlbumClick = { albumId -> onNavigateToPlaylist(albumId, true) },
-                        onNavigateToProfile = onNavigateToProfile
+                        onNavigateToProfile = onNavigateToProfile,
+                        onNavigateToPrivateChat = onNavigateToPrivateChat
                     )
                 }
                 is Screen.Search -> {
@@ -173,7 +188,8 @@ fun MelodiaNavHost(
                         onArtistClick = onNavigateToArtist,
                         onRadioClick = onNavigateToRadio,
                         onPlaylistCategoryClick = onNavigateToPlaylistCategory,
-                        onOpenRecognition = onOpenRecognition
+                        onOpenRecognition = onOpenRecognition,
+                        onNavigateToPrivateChat = onNavigateToPrivateChat
                     )
                 }
                 is Screen.Library -> {
@@ -248,7 +264,8 @@ fun MelodiaNavHost(
                         onBack = onBack,
                         onArtistClick = onNavigateToArtist,
                         onPlaylistClick = { playlistId -> onNavigateToPlaylist(playlistId, false) },
-                        onAlbumClick = { albumId -> onNavigateToPlaylist(albumId, true) }
+                        onAlbumClick = { albumId -> onNavigateToPlaylist(albumId, true) },
+                        onNavigateToPrivateChat = onNavigateToPrivateChat
                     )
                 }
                 // 私人 FM 已并入全屏播放页（见 MelodiaApp 的侧栏入口），这里不再有页面
@@ -274,7 +291,16 @@ fun MelodiaNavHost(
                 is Screen.Message -> {
                     com.lin0721.linmusic.feature.message.ui.MessageScreen(
                         onBack = onBack,
-                        onUserClick = onNavigateToProfile
+                        onUserClick = onNavigateToProfile,
+                        onConversationClick = onNavigateToPrivateChat
+                    )
+                }
+                is Screen.PrivateChat -> {
+                    com.lin0721.linmusic.feature.message.ui.PrivateChatScreen(
+                        userId = screen.uid,
+                        onBack = onBack,
+                        onUserClick = onNavigateToProfile,
+                        onPlaylistClick = onNavigateToPlaylist
                     )
                 }
                 is Screen.MyProfile -> {
@@ -306,7 +332,8 @@ fun MelodiaNavHost(
                         uid = screen.uid,
                         onBack = onBack,
                         onNavigateToFollowList = onNavigateToFollowList,
-                        onPlaylistClick = { playlistId -> onNavigateToPlaylist(playlistId, false) }
+                        onPlaylistClick = { playlistId -> onNavigateToPlaylist(playlistId, false) },
+                        onMessageClick = onNavigateToPrivateChat
                     )
                 }
                 is Screen.FollowList -> {
@@ -318,6 +345,7 @@ fun MelodiaNavHost(
                     )
                 }
             }
+        }
         }
     }
 }

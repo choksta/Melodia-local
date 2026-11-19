@@ -3,10 +3,14 @@ package com.lin0721.linmusic.di
 import com.lin0721.linmusic.core.plugin.ExtensionRegistry
 import com.lin0721.linmusic.core.plugin.PluginContent
 import com.lin0721.linmusic.core.plugin.PluginAwarePlaylistRepository
+import com.lin0721.linmusic.core.auth.AccountSwitcher
 import com.lin0721.linmusic.core.auth.AuthRepository
 import com.lin0721.linmusic.core.auth.AuthRepositoryImpl
+import com.lin0721.linmusic.core.auth.SessionMonitor
 import com.lin0721.linmusic.core.auth.SyncProfileAfterLoginUseCase
 import com.lin0721.linmusic.core.cache.OfflineFallback
+import com.lin0721.linmusic.core.deeplink.LinkPreviewResolver
+import com.lin0721.linmusic.core.deeplink.SongLinkRequests
 import com.lin0721.linmusic.core.offline.OfflinePlayability
 import com.lin0721.linmusic.core.player.data.PlaybackApi
 import com.lin0721.linmusic.core.preferences.SettingsPreferences
@@ -24,14 +28,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import com.lin0721.linmusic.feature.music.data.MusicRepository
 import com.lin0721.linmusic.feature.music.data.MusicRepositoryImpl
-import com.lin0721.linmusic.feature.fm.data.FmRepository
-import com.lin0721.linmusic.feature.fm.data.FmRepositoryImpl
 import com.lin0721.linmusic.feature.home.data.HomeRepository
 import com.lin0721.linmusic.feature.home.data.HomeRepositoryImpl
 import com.lin0721.linmusic.feature.artist.data.ArtistRepository
 import com.lin0721.linmusic.feature.artist.data.ArtistRepositoryImpl
 import com.lin0721.linmusic.feature.message.data.MessageRepository
 import com.lin0721.linmusic.feature.message.data.MessageRepositoryImpl
+import com.lin0721.linmusic.feature.message.ui.PrivateConversationPreviewStore
+import com.lin0721.linmusic.feature.message.ui.PrivateUnreadMonitor
 import com.lin0721.linmusic.feature.profile.data.ProfileRepository
 import com.lin0721.linmusic.feature.profile.data.ProfileRepositoryImpl
 import com.lin0721.linmusic.core.comment.data.CommentRepository
@@ -98,7 +102,6 @@ val repositoryModule = module {
     singleOf(::AuthRepositoryImpl) { bind<AuthRepository>() }
 
     // 首页数据仓储（feature/home）
-    singleOf(::FmRepositoryImpl) { bind<FmRepository>() }
     singleOf(::HomeRepositoryImpl) { bind<HomeRepository>() }
     singleOf(::MusicRepositoryImpl) { bind<MusicRepository>() }
     singleOf(::PodcastRepositoryImpl) { bind<PodcastRepository>() }
@@ -144,6 +147,23 @@ val repositoryModule = module {
 
     // 消息数据仓储（feature/message）
     singleOf(::MessageRepositoryImpl) { bind<MessageRepository>() }
+    single {
+        PrivateUnreadMonitor(
+            get(),
+            get(),
+            get(),
+            CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        )
+    }
+    single {
+        PrivateConversationPreviewStore(
+            messageRepository = get(),
+            userPreferences = get(),
+            readPreferences = get(),
+            unreadMonitor = get(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        )
+    }
 
     // 歌手数据仓储（feature/artist）
     singleOf(::ArtistRepositoryImpl) { bind<ArtistRepository>() }
@@ -200,8 +220,33 @@ val repositoryModule = module {
     // 歌曲多选后的批量操作，歌单页与歌手页共用
     factoryOf(::TrackBatchActionsDelegate)
 
+    // 多账户会话监控与账户切换协调器（延迟取播放器，避免与平台播放器模块互相依赖）
+    single {
+        SessionMonitor(
+            userPreferences = get(),
+            authRepository = get(),
+            playbackControllerProvider = { getOrNull<PlaybackController>() },
+            metadataCache = getOrNull()
+        )
+    }
+    single {
+        AccountSwitcher(
+            userPreferences = get(),
+            authRepository = get(),
+            metadataCache = getOrNull(),
+            playbackControllerProvider = { getOrNull<PlaybackController>() },
+            sessionMonitorProvider = { getOrNull<SessionMonitor>() }
+        )
+    }
+
     // 登录成功后同步账号资料（跨 home/library/artist/playlist 域共用）
-    singleOf(::SyncProfileAfterLoginUseCase)
+    single {
+        SyncProfileAfterLoginUseCase(
+            userPreferences = get(),
+            authRepository = get(),
+            accountSwitcherProvider = { getOrNull<AccountSwitcher>() }
+        )
+    }
 
     // 拉取已红心歌曲 ID（跨 artist/player/playlist 域共用）
     singleOf(::LoadLikedSongIdsUseCase)
@@ -211,4 +256,14 @@ val repositoryModule = module {
 
     // 个人主页数据仓储
     singleOf(::ProfileRepositoryImpl) { bind<ProfileRepository>() }
+
+    // 网易云外链与剪贴板识别、预览元数据解析
+    single {
+        LinkPreviewResolver(
+            playbackRepository = getOrNull<PlaybackRepository>() ?: get<PlaybackRepositoryImpl>(),
+            playlistRepository = get(),
+            artistRepository = get()
+        )
+    }
+    single { SongLinkRequests() }
 }

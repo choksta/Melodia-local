@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
@@ -20,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lin0721.linmusic.core.ui.badge.DraggableUnreadBadge
 import com.lin0721.linmusic.core.ui.interaction.pressable
 import com.lin0721.linmusic.core.ui.theme.MelodiaColors
 import com.lin0721.linmusic.core.ui.theme.MelodiaPress
@@ -35,7 +37,9 @@ fun FilterChipsRow(
     modifier: Modifier = Modifier,
     // 首次组合时把选中项滚进可视区。列表长（如音效预设 12 档）而选中项在很后面时，
     // 不滚的话打开页面只看得到前几项，根本不知道自己当前选的是哪个
-    autoScrollToSelected: Boolean = false
+    autoScrollToSelected: Boolean = false,
+    badges: Map<Int, Int> = emptyMap(),
+    onBadgeDismiss: ((index: Int) -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
     LaunchedEffect(Unit) {
@@ -53,6 +57,7 @@ fun FilterChipsRow(
     ) {
         items(items.indices.toList(), key = { it }) { index ->
             val isSelected = index == selectedIndex
+            val badgeCount = badges[index] ?: 0
             Box(
                 modifier = Modifier
                     .height(36.dp)
@@ -62,11 +67,26 @@ fun FilterChipsRow(
                     .padding(horizontal = 18.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = items[index],
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MelodiaColors.PillContent,
-                    fontSize = 14.sp
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = items[index],
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MelodiaColors.PillContent,
+                        fontSize = 14.sp
+                    )
+                    if (badgeCount > 0) {
+                        DraggableUnreadBadge(
+                            count = badgeCount,
+                            onDismiss = { onBadgeDismiss?.invoke(index) },
+                            enabled = onBadgeDismiss != null,
+                            // 选中态底色即为强调色，角标反色以免融成一团
+                            containerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MelodiaColors.Accent,
+                            contentColor = if (isSelected) MaterialTheme.colorScheme.primary else MelodiaColors.OnAccent
+                        )
+                    }
+                }
             }
         }
     }

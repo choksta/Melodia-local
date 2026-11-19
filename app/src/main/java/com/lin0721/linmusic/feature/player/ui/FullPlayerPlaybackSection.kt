@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.lin0721.linmusic.core.ui.components.SwipeQueueTarget
 import com.lin0721.linmusic.core.ui.theme.uiTween
 import com.lin0721.linmusic.feature.podcast.ui.PodcastPlayerState
+import com.lin0721.linmusic.core.player.PersonalFmMode
 import com.lin0721.linmusic.core.player.PlayMode
 import com.lin0721.linmusic.core.player.PlaybackController
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
@@ -73,9 +74,9 @@ fun LazyListScope.fullPlayerPlaybackSection(
     onToggleRepeat: () -> Unit,
     onDisableRoaming: () -> Unit,
     onDisableIntelligence: () -> Unit,
-    // 私人 FM：左侧控件换成「不喜欢」，右侧换成「换一批」
-    onDislike: () -> Unit = {},
-    onRefreshStream: (() -> Unit)? = null,
+    personalFmMode: PersonalFmMode = PersonalFmMode.DEFAULT,
+    onPersonalFmModeClick: (() -> Unit)? = null,
+    onTrashFm: () -> Unit = {},
     onOutputDeviceClick: () -> Unit,
     onQueueClick: () -> Unit,
     onShareClick: () -> Unit,
@@ -131,7 +132,10 @@ fun LazyListScope.fullPlayerPlaybackSection(
             onArtistClick = onArtistClick,
             onAlbumClick = onAlbumClick,
             podcast = podcast,
-            onToggleSubscribe = onToggleSubscribe
+            onToggleSubscribe = onToggleSubscribe,
+            isPersonalFm = playContext == PlaybackController.CONTEXT_PERSONAL_FM,
+            personalFmMode = personalFmMode,
+            onPersonalFmModeClick = onPersonalFmModeClick
         )
     }
 
@@ -187,9 +191,8 @@ fun LazyListScope.fullPlayerPlaybackSection(
             isIntelligence = playContext == "intelligence",
             onDisableIntelligence = onDisableIntelligence,
             showModeButtons = !podcast.isPodcast,
-            isFm = playContext == PlaybackController.CONTEXT_FM,
-            onDislike = onDislike,
-            onRefreshStream = onRefreshStream,
+            isPersonalFm = playContext == PlaybackController.CONTEXT_PERSONAL_FM,
+            onTrashFm = onTrashFm,
             // 有播放意图但还没真正出声 = 正在缓冲
             isBuffering = playWhenReady && !isPlaying
         )

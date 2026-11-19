@@ -1,114 +1,248 @@
 package com.lin0721.linmusic
 
 import android.os.SystemClock
-import androidx.compose.material3.DrawerState
-import androidx.compose.material3.DrawerValue
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.AnchoredDraggableState
+import androidx.compose.foundation.gestures.DraggableAnchors
+import androidx.compose.foundation.gestures.animateTo
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
+import com.lin0721.linmusic.core.ui.back.decelerateBackProgress
+import com.lin0721.linmusic.core.ui.theme.LocalUiMotion
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-/**
- * 侧边栏状态：一层薄包装，内部用 Material3 的 [DrawerState]。
- *
- * 之前是自己拿 AnchoredDraggableState + translationX 手写的抽屉，问题出在
- * 「主内容层平移让出位置」这个模式对命中测试不友好——面板露出来了，点击却仍
- * 被主内容层吃掉；调布局偏移、调 zIndex 都只能碰运气。
- *
- * 换成 ModalNavigationDrawer 之后，面板是独立的 drawerContent 槽，命中关系由
- * 官方实现保证；边缘手势、遮罩点击关闭、开合动画都是内置的。
- */
-@Stable
+internal const val SIDEBAR_BACK_MAX_FRACTION = 0.12f
+
+// 根据手势进度计算侧边栏跟手回缩的目标偏移，相对完全展开位置最多回缩 12%
+internal fun computeSidebarBackOffset(progress: Float, widthPx: Float): Float {
+    if (widthPx <= 0f) return 0f
+    return (widthPx * (1f - SIDEBAR_BACK_MAX_FRACTION * decelerateBackProgress(progress)))
+        .coerceIn(0f, widthPx)
+}
+
+enum class AppSidebarState {
+    Closed, Open
+}
+
+// 侧边栏推拉状态机：锚点、边缘手势判定与展开进度
+@OptIn(ExperimentalFoundationApi::class)
 class MelodiaSidebarState(
     private val scope: CoroutineScope,
-    val drawerState: DrawerState
+    val widthPx: Float,
+    private val velocityThresholdPx: Float,
+    val draggableState: AnchoredDraggableState<AppSidebarState>
 ) {
 
-    val isOpen: Boolean get() = drawerState.currentValue == DrawerValue.Open
+    // 边缘滑动判断：避免抽屉打开手势与列表左右滑动冲突
+    var isTouchStartingAtEdge by mutableStateOf(false)
+        private set
 
-    /**
-     * 瞬时到位，不做滑入。
-     *
-     * 滑入动画的 300ms 里面板位置一直在变，用户看到一点就去点，那个位置此刻还是
-     * 遮罩——「打开后不能秒交互」就是这么来的。位置固定之后，看到多少点多少。
-     * 过渡感不靠位移，而由两件事承担：面板自身淡入 + 主内容轻微后退（见 MelodiaApp）。
-     */
+    val isOpen: Boolean get() = draggableState.currentValue == AppSidebarState.Open
+
+    // 0f 完全收起，1f 完全展开；测量完成前 offset 为 NaN
+    val progress: Float
+        get() {
+            val offset = draggableState.offset
+            return if (offset.isNaN()) 0f else (offset / widthPx).coerceIn(0f, 1f)
+        }
+
+    val offsetX: Float
+        get() = draggableState.offset.let { if (it.isNaN()) 0f else it }
+
+    private var animationJob: Job? = null
+    private var isBackSeeking = false
+    private var isClosing = false
+
+    // 侧边栏已打开时允许在任意位置向左滑动关闭；关闭时仅允许在左边缘向右拉出
+    fun onPointerDown(positionX: Float, edgeWidthPx: Float) {
+        isBackSeeking = false
+        isClosing = false
+        isTouchStartingAtEdge = isOpen || positionX < edgeWidthPx
+        isHandoffRequested = false
+        isHandoffActive = false
+    }
+
+    fun onPointerUp() {
+        isTouchStartingAtEdge = false
+        if (isHandoffActive) settle(handoffVelocity.calculateVelocity().x)
+        isHandoffRequested = false
+        isHandoffActive = false
+    }
+
+    // 主页横向列表滚到最左仍在右滑时，由根布局接管手势拉出侧栏。
+    // 列表位于随侧栏平移的内容层里，不能直接把它的滚动量转给侧栏，否则手指与内容同步移动，局部位移趋近于零
+    var isHomeHandoffEnabled = false
+    private var isHandoffRequested = false
+    private var isHandoffActive = false
+    private val handoffVelocity = VelocityTracker()
+
+    val homeHandoffConnection = object : NestedScrollConnection {
+        override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+            if (isHomeHandoffEnabled && source == NestedScrollSource.UserInput && available.x > 0f && !isOpen) {
+                isHandoffRequested = true
+            }
+            return Offset.Zero
+        }
+    }
+
+    // 根布局 Initial 阶段逐事件调用，坐标系不随内容层平移；接管后消费事件，子列表随之放弃拖动
+    fun onRootPointerChange(change: PointerInputChange) {
+        if (!isHandoffRequested) return
+        if (!isHandoffActive) {
+            isHandoffActive = true
+            handoffVelocity.resetTracking()
+        }
+        handoffVelocity.addPosition(change.uptimeMillis, change.position)
+        draggableState.dispatchRawDelta(change.position.x - change.previousPosition.x)
+        change.consume()
+    }
+
+    private fun settle(velocityX: Float) {
+        val target = when {
+            velocityX > velocityThresholdPx -> AppSidebarState.Open
+            velocityX < -velocityThresholdPx -> AppSidebarState.Closed
+            progress >= 0.5f -> AppSidebarState.Open
+            else -> AppSidebarState.Closed
+        }
+        isBackSeeking = false
+        isClosing = target == AppSidebarState.Closed
+        animationJob?.cancel()
+        animationJob = scope.launch {
+            try {
+                draggableState.animateTo(target)
+            } finally {
+                isClosing = false
+            }
+        }
+    }
+
     fun open() {
-        scope.launch { drawerState.snapTo(DrawerValue.Open) }
+        isBackSeeking = false
+        isClosing = false
+        animationJob?.cancel()
+        animationJob = scope.launch { draggableState.animateTo(AppSidebarState.Open) }
     }
 
     fun close() {
-        scope.launch { drawerState.close() }
+        isBackSeeking = false
+        isClosing = true
+        animationJob?.cancel()
+        animationJob = scope.launch {
+            try {
+                draggableState.animateTo(AppSidebarState.Closed)
+            } finally {
+                isClosing = false
+            }
+        }
     }
 
-    /**
-     * 关闭抽屉并立刻执行 [action]。
-     *
-     * 曾经试过「等关闭动画走完再跳」：`drawerState.close()` 之后调 action。
-     * 但 close 的动画会被手势取消（点击的 UP 事件被 anchoredDraggable 当成拖动结束），
-     * animateTo 抛 CancellationException，协程结束、action 轮不到执行；
-     * 更糟的是状态可能停在不确定的位置，`isOpen` 仍为 true——
-     * 之后按返回键会一直去「收抽屉」而不是「返回上一页」，返回就彻底失灵了。
-     *
-     * 所以改成瞬时关闭：snapTo 是确定的状态变更，不会被打断、也不会留下半开状态；
-     * 关闭后再导航，新页面出来时抽屉已经不在了，不存在残留。
-     * 打开仍有 Material 原生滑入动画，收起时干脆利落，符合抽屉的一般手感。
-     */
-    /**
-     * 跳转到新页面并收起侧栏。
-     *
-     * 顺序很关键：**先导航，再收起**。
-     *
-     * 反过来（先 snapTo 收起再导航）会「闪回主页」：侧栏瞬间消失的那一帧，
-     * 主页完整裸露出来，而新页面才刚开始从透明淡入（260ms）——
-     * 用户先看到一整屏主页，再看到新页面浮现，像是点了两次。
-     *
-     * 现在的顺序让两件事重叠：新页面开始入场的同时侧栏滑走。
-     * 侧栏滑出的 150ms 里新页面已经淡入过半，切换是连续的。
-     */
+    // 系统返回手势跟手：取消进行中的弹簧动画，按绝对目标偏移更新位置避免累积漂移
+    fun onBackProgress(progress: Float) {
+        if (!isOpen || isClosing || widthPx <= 0f) return
+        animationJob?.cancel()
+        animationJob = null
+        isBackSeeking = true
+        val currentOffset = draggableState.offset
+        if (!currentOffset.isNaN()) {
+            val targetOffset = computeSidebarBackOffset(progress, widthPx)
+            draggableState.dispatchRawDelta(targetOffset - currentOffset)
+        }
+    }
+
+    fun onBackCancel() {
+        if (!isBackSeeking) return
+        isBackSeeking = false
+        if (!isOpen || isClosing) return
+        animationJob?.cancel()
+        animationJob = scope.launch { draggableState.animateTo(AppSidebarState.Open) }
+    }
+
+    // 收起后再执行，避免与页面切换动画叠在一起；弹簧尾段较长，接近收起即执行。被手势打断时不执行
     fun closeThen(action: () -> Unit) {
-        // 告诉页面层：这次切换别淡入。
+        // 告诉页面层：这次切换来自侧栏，别做入场淡入。
         // 侧栏滑出本身就是过渡，新页面再从透明淡进来会多出「主页空档」——
-        // 侧栏已经走了、新页面还没显形，那一瞬就是用户说的「闪回主页」。
+        // 侧栏已经走了、新页面还没显形，那一瞬就是「闪回主页」。
         lastSidebarNavAt = SystemClock.uptimeMillis()
-        action()
-        scope.launch { drawerState.close() }
+        isBackSeeking = false
+        isClosing = true
+        animationJob?.cancel()
+        animationJob = scope.launch {
+            try {
+                var done = false
+                val watcher = launch {
+                    snapshotFlow { progress }.first { it <= ActionProgressThreshold }
+                    done = true
+                    action()
+                }
+                draggableState.animateTo(AppSidebarState.Closed)
+                if (!done) {
+                    watcher.cancel()
+                    action()
+                }
+            } finally {
+                isClosing = false
+            }
+        }
     }
 
     companion object {
-        /**
-         * 最近一次侧栏跳转的时间戳（uptimeMillis）。
-         *
-         * 用它而不是一次性布尔标志：AnimatedContent 的 transitionSpec 在某些情况下
-         * 会被重复求值，布尔标志可能被提前消耗掉，导致这次切换又淡入了。
-         * 用「300ms 窗口内发生的切换算侧栏触发」就不会有这个问题。
-         */
+        private const val ActionProgressThreshold = 0.1f
+
+        // 侧栏跳转的发起时刻：页面层据此判定「本次切换来自侧栏」，跳过入场淡入
+        @Volatile
         var lastSidebarNavAt: Long = 0L
+            private set
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun rememberMelodiaSidebarState(): MelodiaSidebarState {
+fun rememberMelodiaSidebarState(width: androidx.compose.ui.unit.Dp = 310.dp): MelodiaSidebarState {
+    val motion = LocalUiMotion.current
     val scope = rememberCoroutineScope()
-    val drawerState = remember {
-        // 用数组持有自身引用，供 confirmStateChange 判断「是否正滑到一半」
-        val holder = arrayOfNulls<DrawerState>(1)
-        DrawerState(DrawerValue.Closed) { target ->
-            // 只在「正从关闭滑向打开」这段里忽略关闭请求。
-            //
-            // 面板滑入的这 300ms 里，用户看到一点就会去点，而那个位置此刻还是遮罩；
-            // 若照单全收，抽屉会「刚打开又自己关上」，表现就是「点不了还消失了」。
-            //
-            // 条件必须收得很窄：一旦写成「currentValue != targetValue」，
-            // 打开动画刚结束的临界点上仍然成立，此时连程序发起的关闭都会被拒绝，
-            // 抽屉状态就卡在 Open —— 紧接着返回键会一直去「收抽屉」，返回彻底失灵。
-            val opening = holder[0]?.let {
-                it.targetValue == DrawerValue.Open && it.currentValue == DrawerValue.Closed
-            } ?: false
-            !(target == DrawerValue.Closed && opening)
-        }.also { holder[0] = it }
+    val density: Density = LocalDensity.current
+    val widthPx = with(density) { width.toPx() }
+    val velocityThresholdPx = with(density) { 100.dp.toPx() }
+
+    val draggableState = remember {
+        AnchoredDraggableState(
+            initialValue = AppSidebarState.Closed,
+            positionalThreshold = { distance: Float -> distance * 0.5f },
+            velocityThreshold = { velocityThresholdPx },
+            snapAnimationSpec = motion.spring(stiffness = Spring.StiffnessMediumLow),
+            decayAnimationSpec = exponentialDecay()
+        )
     }
-    return remember(scope, drawerState) { MelodiaSidebarState(scope, drawerState) }
+
+    LaunchedEffect(widthPx) {
+        draggableState.updateAnchors(
+            DraggableAnchors {
+                AppSidebarState.Closed at 0f
+                AppSidebarState.Open at widthPx
+            }
+        )
+    }
+
+    return remember(scope, widthPx, velocityThresholdPx, draggableState) {
+        MelodiaSidebarState(scope, widthPx, velocityThresholdPx, draggableState)
+    }
 }
