@@ -89,6 +89,7 @@ import com.lin0721.linmusic.core.ui.theme.MelodiaColors
 import com.lin0721.linmusic.core.ui.theme.ScreenSlideDurationMs
 import com.lin0721.linmusic.core.ui.components.MiniPlayerCard
 import com.lin0721.linmusic.core.ui.components.MiniPlayerLikeMode
+import com.lin0721.linmusic.core.ui.components.SwipeQueueTarget
 import com.lin0721.linmusic.core.ui.theme.skinBackdropRoot
 import com.lin0721.linmusic.core.ui.theme.uiTween
 import com.lin0721.linmusic.core.player.floatinglyric.FloatingLyricRequests
@@ -179,6 +180,9 @@ fun MelodiaApp() {
     val currentTrack by playerManager.currentTrack.collectAsStateWithLifecycle()
     val previousQueueItem by viewModel.playerManager.previousQueueItem.collectAsStateWithLifecycle()
     val nextQueueItem by viewModel.playerManager.nextQueueItem.collectAsStateWithLifecycle()
+    val currentQueueIndex by viewModel.playerManager.currentIndex.collectAsStateWithLifecycle()
+    val currentQueueItem by viewModel.playerManager.currentQueueItem.collectAsStateWithLifecycle()
+    val swipeQueueTarget = SwipeQueueTarget(currentQueueIndex, currentQueueItem?.songId?.toString())
     val isPlaying by viewModel.playerManager.isPlaying.collectAsStateWithLifecycle()
     // 迷你播放条按钮专用：弱网缓冲期间也要立刻显示"暂停中"图标，不能等音频真正流出的 isPlaying
     val miniPlayerShowPause by viewModel.playerManager.playWhenReady.collectAsStateWithLifecycle()
@@ -640,6 +644,7 @@ fun MelodiaApp() {
                             },
                             previousQueueItem = previousQueueItem,
                             nextQueueItem = nextQueueItem,
+                            queueTarget = swipeQueueTarget,
                             onMiniPlayerPrevious = { viewModel.playerManager.skipToPrevious() },
                             onCancelPendingSkip = { viewModel.playerManager.cancelPendingSkip() },
                             isMiniPlayerLiked = isMiniPlayerLiked,
@@ -846,6 +851,7 @@ fun MelodiaApp() {
                         },
                         previousQueueItem = previousQueueItem,
                         nextQueueItem = nextQueueItem,
+                        queueTarget = swipeQueueTarget,
                         onPrevious = { viewModel.playerManager.skipToPrevious() },
                         onCancelPendingSkip = { viewModel.playerManager.cancelPendingSkip() },
                         isLiked = isMiniPlayerLiked,

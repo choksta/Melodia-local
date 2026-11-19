@@ -79,6 +79,7 @@ fun SongMoreOptionsSheet(
     // 音效属于听感层面的调整，放在播放页手边比藏在设置两级菜单里合适
     onAudioEffectClick: () -> Unit,
     onDismiss: () -> Unit,
+    onListenTogetherClick: () -> Unit = {},
     songId: Long? = null
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -255,6 +256,21 @@ fun SongMoreOptionsSheet(
                     )
 
 
+                }
+
+                // 仅网易云歌曲：外部平台歌曲为负 id，本地未匹配歌曲已由外层 isLocalOnly 排除
+                if (!isPodcast && (songId ?: 0L) > 0L) {
+                    OptionRow(
+                        icon = Icons.Rounded.Group,
+                        text = "一起听",
+                        onClick = {
+                            scope.launch {
+                                sheetState.hide()
+                                onDismiss()
+                                onListenTogetherClick()
+                            }
+                        }
+                    )
                 }
 
                 // 6. 分享

@@ -49,6 +49,7 @@ import com.lin0721.linmusic.core.auth.UserPreferences
 import com.lin0721.linmusic.core.log.AppLogger
 import com.lin0721.linmusic.core.player.external.EXTRA_LYRIC_INFO
 import com.lin0721.linmusic.core.player.external.ExternalLyricCoordinator
+import com.lin0721.linmusic.core.player.external.FlymeStatusBarLyric
 import com.lin0721.linmusic.core.player.usb.UsbAudioDeviceManager
 import com.lin0721.linmusic.core.player.usb.UsbAudioOutputProvider
 import com.lin0721.linmusic.core.preferences.SettingsPreferences
@@ -354,6 +355,7 @@ class MelodiaPlaybackService : MediaSessionService() {
         externalLyricCoordinator.onMetadataChanged = {
             sessionPlayer.notifyMetadataChanged()
         }
+        externalLyricCoordinator.onTickerChanged = { triggerNotificationUpdate() }
 
         externalInterruptionResumeController.start(
             scope = serviceScope,
@@ -497,6 +499,7 @@ class MelodiaPlaybackService : MediaSessionService() {
         headsetDisconnectController?.release()
         headsetDisconnectController = null
         externalLyricCoordinator.onMetadataChanged = null
+        externalLyricCoordinator.onTickerChanged = null
         externalLyricCoordinator.release()
         playerManager.release()
         playerManager.saveState()
@@ -825,7 +828,11 @@ class MelodiaPlaybackService : MediaSessionService() {
                 )
             builder.setStyle(mediaStyle)
 
-            return MediaNotification(NOTIFICATION_ID, builder.build())
+            val tickerText = externalLyricCoordinator.flymeTickerText
+            if (tickerText != null) builder.setTicker(tickerText)
+            val notification = builder.build()
+            if (tickerText != null) FlymeStatusBarLyric.applyTo(notification, R.drawable.ic_notification)
+            return MediaNotification(NOTIFICATION_ID, notification)
         }
 
         override fun handleCustomCommand(

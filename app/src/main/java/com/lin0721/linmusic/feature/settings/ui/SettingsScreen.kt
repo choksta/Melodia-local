@@ -55,8 +55,9 @@ enum class SettingsSubMenu(val title: String, val sectionTitles: List<String>, v
     QUALITY_SOURCES("音质与音源", listOf("默认音质", "播放页显示", "换源基础设置", "社区扩展源", "远程 UNM 服务"), Icons.Outlined.HighQuality),
     DOWNLOAD_STORAGE("下载与存储", listOf("下载", "存储管理"), Icons.Outlined.Storage),
     NETWORK("网络设置", listOf("网络连接", "网络代理"), Icons.Outlined.Wifi),
-    LYRICS("歌词设置", listOf("全屏歌词", "悬浮歌词", "外部与系统歌词"), Icons.Outlined.Subtitles),
-    APPEARANCE("外观", listOf("显示", "底部导航栏", "播放页布局"), Icons.Outlined.Palette),
+    // 本仓库不提供独立关于页（定制），因此不包含上游的 ABOUT 分组
+    LYRICS("歌词设置", listOf("全屏歌词", "悬浮歌词", "外部与系统歌词", "歌词过滤"), Icons.Outlined.Subtitles),
+    APPEARANCE("外观", listOf("显示", "底部导航栏", "播放页布局", "界面精简"), Icons.Outlined.Palette),
     SYSTEM("系统与集成", listOf("悬浮与桌面", "设备与集成", "沉浸", "插件"), Icons.Outlined.Extension);
 
     val subtitle: String get() = sectionTitles.take(2).joinToString("、")
