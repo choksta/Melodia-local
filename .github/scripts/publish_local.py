@@ -147,13 +147,22 @@ def main():
     args = parser.parse_args()
 
     tag = args.tag
-    match = re.search(r"-local(\d+)$", tag)
-    if not match:
-        raise SystemExit("tag 必须以 -localN 结尾，否则 versionCode 无法计算")
-    n = int(match.group(1))
-    version_code = VERSION_CODE_BASE + n
+    # 两种 tag 形式：
+    #   纯版本号 v2.1.59 —— 现在主用，versionCode = (MAJOR*10000+MINOR*100+PATCH)*100+99
+    #   旧的 -localN   —— 兼容，versionCode = 20512 + N（衔接 local28 起的旧序列）
+    local = re.search(r"-local(\d+)$", tag)
+    pure = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", tag)
+    if local:
+        version_code = VERSION_CODE_BASE + int(local.group(1))
+    elif pure:
+        major, minor, patch = (int(g) for g in pure.groups())
+        if minor >= 100 or patch >= 100:
+            raise SystemExit("MINOR / PATCH 必须小于 100（versionCode 编码空间）")
+        version_code = (major * 10000 + minor * 100 + patch) * 100 + 99
+    else:
+        raise SystemExit(f"tag 只能是 vX.Y.Z 或 ...-localN 形式，收到：{tag}")
     # build.gradle 用 archivesName = "Melodia-v${versionName}"，而 versionName 不含前导 v，
-    # 所以产物是 Melodia-v2.1.0-...-release.apk，不是 Melodia-vv2.1.0-...
+    # 所以产物是 Melodia-v2.1.59-release.apk，不是 Melodia-vv2.1.59-...
     version_name = tag[1:] if tag.startswith("v") else tag
     print(f"tag={tag}  versionName={version_name}  versionCode={version_code}")
 
@@ -197,11 +206,15 @@ def main():
         print("\n--dry-run：到此为止，不推 tag、不上传")
         return
 
-    # 4. 推 tag
+    # 4. 推 tag（已经在远端就跳过：重复发同一版号时不该失败）
     print(f"  推送 tag 到 {REMOTE}…")
-    push = run(["git", "push", REMOTE, tag], check=False)
-    if push.returncode != 0:
-        raise SystemExit("推 tag 失败：\n" + (push.stdout or "") + (push.stderr or ""))
+    remote_tags = git("ls-remote", "--tags", REMOTE, f"refs/tags/{tag}*", check=False)
+    if tag in remote_tags:
+        print("  远端已有该 tag，跳过推送")
+    else:
+        push = run(["git", "push", REMOTE, tag], check=False)
+        if push.returncode != 0:
+            raise SystemExit("推 tag 失败：\n" + (push.stdout or "") + (push.stderr or ""))
 
     # 5. Release（已存在则更新正文并替换资产）
     auth = token()
@@ -218,7 +231,7 @@ def main():
     else:
         status, created = api("POST", f"/repos/{OWNER_REPO}/releases", auth, {
             "tag_name": tag,
-            "name": tag,
+            "name": version_name,
             "body": body,
             "prerelease": args.prerelease,
             "make_latest": "true",
