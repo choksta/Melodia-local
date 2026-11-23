@@ -488,7 +488,7 @@ fun SongMoreOptionsSheet(
 
                 // 10. 音效调节
                 OptionRow(
-                    icon = Icons.Rounded.Equalizer,
+                    icon = MelodiaIcons.Tune,
                     text = "音效调节",
                     onClick = {
                         scope.launch {
