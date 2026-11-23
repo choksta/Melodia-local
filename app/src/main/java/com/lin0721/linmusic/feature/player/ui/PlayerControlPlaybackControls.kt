@@ -10,16 +10,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
 import com.lin0721.linmusic.core.plugin.ControlVariant
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.rounded.AllInclusive
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -38,6 +29,15 @@ import com.lin0721.linmusic.core.ui.theme.InfoCardRadius
 import com.lin0721.linmusic.core.ui.theme.MelodiaSpacing
 import com.lin0721.linmusic.core.ui.theme.outlinedControls
 import com.lin0721.linmusic.core.ui.theme.styledButtonShape
+import com.lin0721.linmusic.core.ui.icons.MelodiaIcons
+import com.lin0721.linmusic.core.ui.icons.Repeat
+import com.lin0721.linmusic.core.ui.icons.RepeatOne
+import com.lin0721.linmusic.core.ui.icons.Shuffle
+import com.lin0721.linmusic.core.ui.icons.SkipNext
+import com.lin0721.linmusic.core.ui.icons.SkipPrevious
+import com.lin0721.linmusic.core.ui.icons.Delete
+import com.lin0721.linmusic.core.ui.icons.Infinity
+import com.lin0721.linmusic.core.ui.icons.Sparkle
 
 // 主控件行：随机/漫游、上一曲、播放暂停、下一曲、循环模式
 // FM 上下文下两侧换成「不喜欢」与「换一批」：随机和循环对一条无穷推荐流没有意义
@@ -83,10 +83,10 @@ fun PlaybackControls(
         ) {
             Icon(
                 imageVector = when {
-                    isPersonalFm -> Icons.Rounded.DeleteOutline
-                    isRoaming -> Icons.Rounded.AllInclusive
-                    isIntelligence -> Icons.Rounded.AutoAwesome
-                    else -> Icons.Default.Shuffle
+                    isPersonalFm -> MelodiaIcons.Delete
+                    isRoaming -> MelodiaIcons.Infinity
+                    isIntelligence -> MelodiaIcons.Sparkle
+                    else -> MelodiaIcons.Shuffle
                 },
                 contentDescription = if (isPersonalFm) "不喜欢" else null,
                 tint = if (!isPersonalFm && (isRoaming || isIntelligence || playMode == PlayMode.SHUFFLE)) {
@@ -111,7 +111,7 @@ fun PlaybackControls(
                 modifier = transportOutline
             ) {
                 Icon(
-                    Icons.Rounded.SkipPrevious,
+                    MelodiaIcons.SkipPrevious,
                     contentDescription = null,
                     tint = if (isPersonalFm) MelodiaColors.TextSecondary.copy(alpha = 0.35f) else MelodiaColors.TextPrimary,
                     modifier = Modifier.size(46.dp)
@@ -119,7 +119,7 @@ fun PlaybackControls(
             }
             PlayPauseFab(isPlaying, onTogglePlay, isBuffering = isBuffering)
             MelodiaIconButton(onClick = onPlayNext, style = MelodiaPress.Transport, modifier = transportOutline) {
-                Icon(Icons.Rounded.SkipNext, contentDescription = null, tint = MelodiaColors.TextPrimary, modifier = Modifier.size(46.dp))
+                Icon(MelodiaIcons.SkipNext, contentDescription = null, tint = MelodiaColors.TextPrimary, modifier = Modifier.size(46.dp))
             }
         }
 
@@ -128,7 +128,7 @@ fun PlaybackControls(
             modifier = Modifier.offset(x = 10.dp)
         ) {
             Icon(
-                if (playMode == PlayMode.SINGLE_LOOP) Icons.Default.RepeatOne else Icons.Default.Repeat,
+                if (playMode == PlayMode.SINGLE_LOOP) MelodiaIcons.RepeatOne else MelodiaIcons.Repeat,
                 contentDescription = null,
                 tint = if (playMode == PlayMode.SINGLE_LOOP) MelodiaColors.TextPrimary else MelodiaColors.TextSecondary,
                 modifier = Modifier.size(28.dp)
@@ -230,7 +230,7 @@ fun PlaybackControlRow(
                     if (isPersonalFm) {
                         MelodiaIconButton(onClick = onTrashFm) {
                             Icon(
-                                Icons.Rounded.DeleteOutline,
+                                MelodiaIcons.Delete,
                                 contentDescription = "不喜欢",
                                 tint = MelodiaColors.TextSecondary,
                                 modifier = Modifier.size(28.dp * scale)
@@ -239,7 +239,7 @@ fun PlaybackControlRow(
                     } else {
                         MelodiaIconButton(onClick = onToggleShuffle) {
                             Icon(
-                                Icons.Default.Shuffle,
+                                MelodiaIcons.Shuffle,
                                 contentDescription = "随机播放",
                                 tint = if (playMode == PlayMode.SHUFFLE) MelodiaColors.TextPrimary else MelodiaColors.TextSecondary,
                                 modifier = Modifier.size(28.dp * scale)
@@ -254,7 +254,7 @@ fun PlaybackControlRow(
                     modifier = transportOutline
                 ) {
                     Icon(
-                        Icons.Rounded.SkipPrevious,
+                        MelodiaIcons.SkipPrevious,
                         contentDescription = "上一首",
                         tint = if (isPersonalFm) MelodiaColors.TextSecondary.copy(alpha = 0.35f) else MelodiaColors.TextPrimary,
                         modifier = Modifier.size(46.dp * scale)
@@ -269,11 +269,11 @@ fun PlaybackControlRow(
                     PlayPauseFab(isPlaying, onTogglePlay, scale, outlined)
                 }
                 "next" -> MelodiaIconButton(onClick = onPlayNext, style = MelodiaPress.Transport, modifier = transportOutline) {
-                    Icon(Icons.Rounded.SkipNext, contentDescription = "下一首", tint = MelodiaColors.TextPrimary, modifier = Modifier.size(46.dp * scale))
+                    Icon(MelodiaIcons.SkipNext, contentDescription = "下一首", tint = MelodiaColors.TextPrimary, modifier = Modifier.size(46.dp * scale))
                 }
                 "repeat" -> if (showModeButtons && !isPersonalFm) MelodiaIconButton(onClick = onToggleRepeat) {
                     Icon(
-                        if (playMode == PlayMode.SINGLE_LOOP) Icons.Default.RepeatOne else Icons.Default.Repeat,
+                        if (playMode == PlayMode.SINGLE_LOOP) MelodiaIcons.RepeatOne else MelodiaIcons.Repeat,
                         contentDescription = "循环模式",
                         tint = if (playMode == PlayMode.SINGLE_LOOP) MelodiaColors.TextPrimary else MelodiaColors.TextSecondary,
                         modifier = Modifier.size(28.dp * scale)
@@ -284,7 +284,7 @@ fun PlaybackControlRow(
                     if (isPersonalFm) {
                         MelodiaIconButton(onClick = onTrashFm) {
                             Icon(
-                                Icons.Rounded.DeleteOutline,
+                                MelodiaIcons.Delete,
                                 contentDescription = "不喜欢",
                                 tint = MelodiaColors.TextSecondary,
                                 modifier = Modifier.size(28.dp * scale)
@@ -296,9 +296,9 @@ fun PlaybackControlRow(
                         ) {
                             Icon(
                                 when (playMode) {
-                                    PlayMode.LIST_LOOP -> Icons.Default.Repeat
-                                    PlayMode.SINGLE_LOOP -> Icons.Default.RepeatOne
-                                    PlayMode.SHUFFLE -> Icons.Default.Shuffle
+                                    PlayMode.LIST_LOOP -> MelodiaIcons.Repeat
+                                    PlayMode.SINGLE_LOOP -> MelodiaIcons.RepeatOne
+                                    PlayMode.SHUFFLE -> MelodiaIcons.Shuffle
                                 },
                                 contentDescription = when (playMode) {
                                     PlayMode.LIST_LOOP -> "列表循环"

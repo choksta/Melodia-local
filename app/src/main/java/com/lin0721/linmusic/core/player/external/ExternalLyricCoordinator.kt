@@ -18,11 +18,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 private const val TAG = "ExternalLyricCoordinator"
 private const val LYRIC_VERSION_PREFIX = "lyric_"
+// 歌词拉取失败或返回空时的重试间隔，试完仍为空就不再纠缠，等下次切歌
+private val LYRIC_RETRY_DELAYS = longArrayOf(2_000L, 5_000L, 15_000L)
 
 const val EXTRA_LYRIC_INFO = "lyricInfo"
 
@@ -37,6 +40,7 @@ class ExternalLyricCoordinator(
     private val fluidCloudNotifier = FluidCloudLyricNotifier(context)
 
     private var lyricFetchJob: Job? = null
+    private var lyricRetryJob: Job? = null
 
     private var currentSongId: Long = -1L
     private var currentLines: List<LyricLine> = emptyList()
@@ -236,16 +240,18 @@ class ExternalLyricCoordinator(
         originalArtist = meta?.artist?.toString() ?: ""
         originalAlbum = meta?.albumTitle?.toString() ?: ""
         displayedTitle = originalTitle
-        originalDurationMs = playerManager.duration.value
-
         if (songId != currentSongId) {
             currentSongId = songId
+            // 切歌这一瞬间 duration 可能还是上一首的值，先置 0，等真实时长到位再补推
+            originalDurationMs = 0L
             sessionGeneration++
             val generation = sessionGeneration
             currentLines = emptyList()
             currentLyricIndex = -1
             currentLyricInfoJson = ""
             lyricFetchJob?.cancel()
+            lyricRetryJob?.cancel()
+            lyricRetryJob = null
             // 换歌后词幕的时基作废，下一次同步必须强制重发
             lyriconAdapter.invalidatePositionBase()
 
@@ -262,31 +268,7 @@ class ExternalLyricCoordinator(
             }
 
             if (songId != -1L) {
-                lyricFetchJob = scope.launch {
-                    lyricsResolver.lyricsFor(songId).collect { result ->
-                        if (generation != sessionGeneration) return@collect
-                        result.onSuccess { lines ->
-                            currentLines = lines
-                            rebuildLyricInfo()
-                            onMetadataChanged?.invoke()
-
-                            if (isLyriconEnabled) {
-                                lyriconAdapter.updateSong(
-                                    songId = songId.toString(),
-                                    title = originalTitle,
-                                    artist = originalArtist,
-                                    durationMs = originalDurationMs,
-                                    lines = currentLines,
-                                    showTranslation = isShowTranslation
-                                )
-                            }
-                            dispatchSuperLyricCurrentLine()
-                            refreshStatusBarLyrics()
-                        }.onFailure {
-                            AppLogger.w(TAG, "外部歌词加载失败: songId=$songId", it)
-                        }
-                    }
-                }
+                startLyricFetch(songId, generation, attempt = 0)
             } else {
                 onMetadataChanged?.invoke()
             }
@@ -294,6 +276,63 @@ class ExternalLyricCoordinator(
             onMetadataChanged?.invoke()
         }
         refreshStatusBarLyrics()
+    }
+
+    /**
+     * 拉取歌词；失败或拿到空结果时按退避重试。
+     *
+     * 歌词接口偶发超时、被限流时，原来只写一条日志就结束，这一首会一直停在空歌词上，
+     * 只有切歌才会再试，表现出来就是「偶尔没歌词」。
+     *
+     * @param attempt 当前是第几次尝试，用于决定等待多久
+     */
+    private fun startLyricFetch(songId: Long, generation: Int, attempt: Int) {
+        lyricFetchJob = scope.launch {
+            lyricsResolver.lyricsFor(songId).collect { result ->
+                if (generation != sessionGeneration) return@collect
+                result.onSuccess { lines ->
+                    currentLines = lines
+                    if (lines.isEmpty() && attempt < LYRIC_RETRY_DELAYS.size) {
+                        scheduleLyricRetry(songId, generation, attempt)
+                    }
+                    rebuildLyricInfo()
+                    onMetadataChanged?.invoke()
+
+                    if (isLyriconEnabled) {
+                        lyriconAdapter.updateSong(
+                            songId = songId.toString(),
+                            title = originalTitle,
+                            artist = originalArtist,
+                            durationMs = originalDurationMs,
+                            lines = currentLines,
+                            showTranslation = isShowTranslation
+                        )
+                    }
+                    dispatchSuperLyricCurrentLine()
+                    refreshStatusBarLyrics()
+                }.onFailure {
+                    AppLogger.w(TAG, "外部歌词加载失败: songId=$songId", it)
+                    if (attempt < LYRIC_RETRY_DELAYS.size) {
+                        scheduleLyricRetry(songId, generation, attempt)
+                    }
+                }
+            }
+        }
+    }
+
+    /** 按退避重排一次歌词拉取；歌已换、已拿到歌词或已有待执行的重试时直接放弃。 */
+    private fun scheduleLyricRetry(songId: Long, generation: Int, attempt: Int) {
+        if (generation != sessionGeneration) return
+        if (lyricRetryJob?.isActive == true) return
+        val delayMs = LYRIC_RETRY_DELAYS.getOrNull(attempt) ?: return
+        AppLogger.i(TAG, "歌词为空或加载失败，${delayMs}ms 后重试: songId=$songId attempt=$attempt")
+        lyricRetryJob = scope.launch {
+            delay(delayMs)
+            if (generation != sessionGeneration) return@launch
+            if (currentLines.isNotEmpty()) return@launch
+            lyricFetchJob?.cancel()
+            startLyricFetch(songId, generation, attempt + 1)
+        }
     }
 
     private fun handlePlayStateChanged(isPlaying: Boolean) {
@@ -457,20 +496,30 @@ class ExternalLyricCoordinator(
         )
     }
 
-    fun applyToMediaMetadata(builder: MediaMetadata.Builder, original: MediaMetadata): MediaMetadata {
-        if (isBluetoothLyricEnabled && !isLyricInfoEnabled && displayedTitle.isNotBlank()) {
-            builder.setTitle(displayedTitle)
-        } else {
-            builder.setTitle(originalTitle.ifBlank { original.title })
-        }
+    fun applyToMediaMetadata(
+        mediaId: String?,
+        builder: MediaMetadata.Builder,
+        original: MediaMetadata
+    ): MediaMetadata {
+        val resolved = resolveExternalLyricMetadata(
+            mediaId = mediaId,
+            originalTitle = original.title,
+            currentSongId = currentSongId,
+            isBluetoothLyricEnabled = isBluetoothLyricEnabled,
+            isLyricInfoEnabled = isLyricInfoEnabled,
+            displayedTitle = displayedTitle,
+            currentLyricInfoJson = currentLyricInfoJson,
+            sessionGeneration = sessionGeneration
+        )
+        builder.setTitle(resolved.title)
 
         val existingExtras = original.extras
-        if (isLyricInfoEnabled && currentLyricInfoJson.isNotBlank()) {
+        if (resolved.lyricInfoJson != null) {
             val bundle = if (existingExtras != null) Bundle(existingExtras) else Bundle()
-            bundle.putString(EXTRA_LYRIC_INFO, currentLyricInfoJson)
+            bundle.putString(EXTRA_LYRIC_INFO, resolved.lyricInfoJson)
             builder.setExtras(bundle)
             // Media3 的 equals 忽略 extras，借 discSubtitle 让歌词变化可被感知
-            builder.setDiscSubtitle("$LYRIC_VERSION_PREFIX${sessionGeneration}_${currentLyricInfoJson.hashCode()}")
+            builder.setDiscSubtitle(resolved.discSubtitle)
         } else {
             if (existingExtras != null && existingExtras.containsKey(EXTRA_LYRIC_INFO)) {
                 val bundle = Bundle(existingExtras)
@@ -510,3 +559,42 @@ class ExternalLyricCoordinator(
         // 观察链留着，重连后才能把当前歌曲与位置补回去
     }
 }
+
+internal data class ExternalLyricMetadataOverride(
+    val title: CharSequence?,
+    val lyricInfoJson: String?,
+    val discSubtitle: String?
+)
+
+// 切歌同步落到播放器时，ExternalLyricCoordinator 的 currentTrack 收集协程可能还没跑完，
+// currentSongId 仍停在上一首；此时绝不能拿上一首的缓存标题或歌词覆盖新 MediaItem 的原始元数据
+internal fun resolveExternalLyricMetadata(
+    mediaId: String?,
+    originalTitle: CharSequence?,
+    currentSongId: Long,
+    isBluetoothLyricEnabled: Boolean,
+    isLyricInfoEnabled: Boolean,
+    displayedTitle: String,
+    currentLyricInfoJson: String,
+    sessionGeneration: Int
+): ExternalLyricMetadataOverride {
+    val itemSongId = mediaId?.toLongOrNull() ?: -1L
+    val matchesCurrentSong = currentSongId != -1L && itemSongId == currentSongId
+    val resolvedTitle = if (matchesCurrentSong && isBluetoothLyricEnabled && !isLyricInfoEnabled && displayedTitle.isNotBlank()) {
+        displayedTitle
+    } else {
+        originalTitle
+    }
+    val resolvedLyricInfo = if (matchesCurrentSong && isLyricInfoEnabled && currentLyricInfoJson.isNotBlank()) {
+        currentLyricInfoJson
+    } else {
+        null
+    }
+    val discSubtitle = resolvedLyricInfo?.let { "$LYRIC_VERSION_PREFIX${sessionGeneration}_${it.hashCode()}" }
+    return ExternalLyricMetadataOverride(
+        title = resolvedTitle,
+        lyricInfoJson = resolvedLyricInfo,
+        discSubtitle = discSubtitle
+    )
+}
+

@@ -40,6 +40,17 @@ import com.lin0721.linmusic.core.source.MusicPlatform
 import com.lin0721.linmusic.core.source.SourcePreferences
 import com.lin0721.linmusic.core.source.LxPluginManager
 import com.lin0721.linmusic.core.update.UpdateChecker
+import com.lin0721.linmusic.core.lanlink.ConnectedPeerInfo
+import com.lin0721.linmusic.core.lanlink.DiscoveredLanDevice
+import com.lin0721.linmusic.core.lanlink.LanLinkAndroidClient
+import com.lin0721.linmusic.core.lanlink.LanLinkConnectionState
+import com.lin0721.linmusic.core.lanlink.LanLinkPlaybackMode
+import com.lin0721.linmusic.core.lanlink.LanLinkSyncState
+import com.lin0721.linmusic.core.lanlink.PairedLanDevice
+import com.lin0721.linmusic.core.player.ffmpeg.FfmpegCatalogInfo
+import com.lin0721.linmusic.core.player.ffmpeg.FfmpegComponentManager
+import com.lin0721.linmusic.core.player.ffmpeg.FfmpegComponentState
+import kotlinx.coroutines.Job
 import java.io.File
 
 private const val TAG = "SettingsViewModel"
@@ -54,7 +65,9 @@ class SettingsViewModel(
     private val accountSwitcher: AccountSwitcher,
     private val resourceProvider: ResourceProvider,
     private val updateChecker: UpdateChecker,
-    val skins: SkinRepository
+    val skins: SkinRepository,
+    private val ffmpegComponentManager: FfmpegComponentManager,
+    private val lanLinkClient: LanLinkAndroidClient
 ) : ViewModel() {
 
     // DataStore 的偏好流统一以相同策略转为 StateFlow，避免每项重复五行样板
@@ -77,6 +90,8 @@ class SettingsViewModel(
     val searchSuggestionEnabled = settingsPreferences.searchSuggestionEnabled.asState(true)
     val homeRecentPlayEnabled = settingsPreferences.homeRecentPlayEnabled.asState(true)
     val homeForYouEnabled = settingsPreferences.homeForYouEnabled.asState(true)
+    val homeSearchButtonEnabled = settingsPreferences.homeSearchButtonEnabled.asState(true)
+    val sidebarMessageEnabled = settingsPreferences.sidebarMessageEnabled.asState(true)
     val lyricFilterConfig = settingsPreferences.lyricFilterConfig.asState(LyricFilterConfig())
     val fallbackEnabled = sourcePreferences.fallbackEnabled.asState(false)
     val communityPriority = sourcePreferences.communityPriority.asState(false)
@@ -145,7 +160,6 @@ class SettingsViewModel(
 
     val mobileAlert = settingsPreferences.mobileAlert.asState(true)
 
-    val useProxy = settingsPreferences.useProxy.asState(false)
 
     val showDesktopLrc = settingsPreferences.showDesktopLrc.asState(false)
 
@@ -157,11 +171,10 @@ class SettingsViewModel(
 
     val clipboardLinkEnabled = settingsPreferences.clipboardLinkEnabled.asState(true)
 
-    val showCreateEntry = settingsPreferences.showCreateEntry.asState(true)
-
     val bottomBarLayout = settingsPreferences.bottomBarLayout.asState(BottomBarLayout.DEFAULT)
 
     val bottomBarIconOnly = settingsPreferences.bottomBarIconOnly.asState(false)
+    val bottomBarGradient = settingsPreferences.bottomBarGradient.asState(false)
 
     val notificationButtons = settingsPreferences.notificationButtons.asState(NotificationButtonLayout.DEFAULT)
 
@@ -184,6 +197,7 @@ class SettingsViewModel(
     val predictiveBackEnabled = settingsPreferences.predictiveBackEnabled.asState(false)
 
     val playlistTrackIndexEnabled = settingsPreferences.playlistTrackIndexEnabled.asState(false)
+    val alwaysShowLikedBadge = settingsPreferences.alwaysShowLikedBadge.asState(true)
 
     val floatingLyricStyle = settingsPreferences.floatingLyricStyle.asState(FloatingLyricStyle(fontSizeSp = 14, backgroundAlpha = 70))
 
@@ -319,6 +333,10 @@ class SettingsViewModel(
     fun updateHomeRecentPlayEnabled(enabled: Boolean) = launchSave { settingsPreferences.saveHomeRecentPlayEnabled(enabled) }
 
     fun updateHomeForYouEnabled(enabled: Boolean) = launchSave { settingsPreferences.saveHomeForYouEnabled(enabled) }
+
+    fun updateHomeSearchButtonEnabled(enabled: Boolean) = launchSave { settingsPreferences.saveHomeSearchButtonEnabled(enabled) }
+
+    fun updateSidebarMessageEnabled(enabled: Boolean) = launchSave { settingsPreferences.saveSidebarMessageEnabled(enabled) }
 
     fun updateLyricFilterEnabled(enabled: Boolean) = launchSave { settingsPreferences.saveLyricFilterEnabled(enabled) }
 
@@ -474,7 +492,6 @@ class SettingsViewModel(
 
     fun updateMobileAlert(enabled: Boolean) = launchSave { settingsPreferences.saveMobileAlert(enabled) }
 
-    fun updateUseProxy(enabled: Boolean) = launchSave { settingsPreferences.saveUseProxy(enabled) }
 
     fun updateShowDesktopLrc(enabled: Boolean) = launchSave { settingsPreferences.saveShowDesktopLrc(enabled) }
 
@@ -486,14 +503,16 @@ class SettingsViewModel(
         settingsPreferences.setClipboardLinkEnabled(enabled)
     }
 
-    fun updateShowCreateEntry(enabled: Boolean) = launchSave { settingsPreferences.saveShowCreateEntry(enabled) }
-
     fun updateBottomBarLayout(layout: List<BottomBarItemSetting>) = launchSave {
         settingsPreferences.saveBottomBarLayout(layout)
     }
 
     fun updateBottomBarIconOnly(iconOnly: Boolean) = launchSave {
         settingsPreferences.saveBottomBarIconOnly(iconOnly)
+    }
+
+    fun updateBottomBarGradient(enabled: Boolean) = launchSave {
+        settingsPreferences.saveBottomBarGradient(enabled)
     }
 
     fun updateNotificationButtons(layout: List<NotificationButtonSetting>) = launchSave {
@@ -523,6 +542,7 @@ class SettingsViewModel(
     fun updatePredictiveBackEnabled(enabled: Boolean) = launchSave { settingsPreferences.savePredictiveBackEnabled(enabled) }
 
     fun updatePlaylistTrackIndexEnabled(enabled: Boolean) = launchSave { settingsPreferences.savePlaylistTrackIndexEnabled(enabled) }
+    fun updateAlwaysShowLikedBadge(enabled: Boolean) = launchSave { settingsPreferences.saveAlwaysShowLikedBadge(enabled) }
 
     fun updateFloatingLyricStyle(transform: (FloatingLyricStyle) -> FloatingLyricStyle) =
         launchSave { settingsPreferences.saveFloatingLyricStyle(transform(settingsPreferences.floatingLyricStyle.first())) }
@@ -789,5 +809,106 @@ class SettingsViewModel(
             _otherCacheSize.value = 0L
             _toastEvent.emit("其他临时文件已清理")
         }
+    }
+
+    // ─── ffmpeg 解码组件管理 ───
+
+    val ffmpegComponentState: StateFlow<FfmpegComponentState> = ffmpegComponentManager.state
+    val ffmpegCatalogInfo: StateFlow<FfmpegCatalogInfo> = ffmpegComponentManager.catalogInfo
+    private var ffmpegInstallJob: Job? = null
+
+    fun hasFfmpegUpdate(state: FfmpegComponentState, catalog: FfmpegCatalogInfo): Boolean =
+        ffmpegComponentManager.hasUpdate(state, catalog)
+
+    fun refreshFfmpegCatalog() {
+        viewModelScope.launch {
+            ffmpegComponentManager.refreshCatalog()
+        }
+    }
+
+    fun installOrUpdateFfmpegComponent() {
+        if (ffmpegInstallJob?.isActive == true) return
+        val hadInstalled = ffmpegComponentManager.isInstalled
+        ffmpegInstallJob = viewModelScope.launch {
+            try {
+                if (ffmpegComponentManager.installOrUpdate()) {
+                    _toastEvent.emit(if (hadInstalled) "ffmpeg 解码组件已更新" else "ffmpeg 解码组件已安装")
+                }
+            } finally {
+                ffmpegInstallJob = null
+            }
+        }
+    }
+
+    fun cancelFfmpegInstallOrRestore() {
+        ffmpegInstallJob?.cancel()
+        ffmpegInstallJob = null
+        ffmpegComponentManager.restoreLocalStateIfIdle()
+    }
+
+    fun deleteFfmpegComponent() {
+        ffmpegInstallJob?.cancel()
+        ffmpegInstallJob = null
+        viewModelScope.launch {
+            ffmpegComponentManager.deleteComponent()
+            _toastEvent.emit("已删除 ffmpeg 解码组件")
+        }
+    }
+
+    // ─── 局域网联动 ───
+
+    val lanLinkEnabled = settingsPreferences.lanLinkEnabled.asState(false)
+    val lanLinkBackgroundKeepalive = settingsPreferences.lanLinkBackgroundKeepalive.asState(true)
+    val lanLinkPlaybackMode = settingsPreferences.lanLinkPlaybackMode.asState(LanLinkPlaybackMode.SINGLE_DEVICE)
+    val lanLinkIsDiscovering: StateFlow<Boolean> = lanLinkClient.isDiscovering
+    val lanLinkDiscoveredDevices: StateFlow<List<DiscoveredLanDevice>> = lanLinkClient.discoveredDevices
+    val lanLinkPairedDevices: StateFlow<List<PairedLanDevice>> = lanLinkClient.pairedDevices
+    val lanLinkConnectionState: StateFlow<LanLinkConnectionState> = lanLinkClient.connectionState
+    val lanLinkConnectedDevice: StateFlow<ConnectedPeerInfo?> = lanLinkClient.connectedDevice
+    val lanLinkSyncState: StateFlow<LanLinkSyncState> = lanLinkClient.syncState
+    val lanLinkSyncStatusMessage: StateFlow<String> = lanLinkClient.syncStatusMessage
+
+    fun updateLanLinkEnabled(enabled: Boolean) = launchSave {
+        settingsPreferences.saveLanLinkEnabled(enabled)
+    }
+
+    fun updateLanLinkBackgroundKeepalive(enabled: Boolean) = launchSave {
+        settingsPreferences.saveLanLinkBackgroundKeepalive(enabled)
+    }
+
+    fun updateLanLinkPlaybackMode(mode: LanLinkPlaybackMode) = launchSave {
+        settingsPreferences.saveLanLinkPlaybackMode(mode)
+    }
+
+    fun discoverLanDesktops() {
+        viewModelScope.launch {
+            val found = lanLinkClient.discoverDevices()
+            if (found.isEmpty()) {
+                _toastEvent.emit("未发现桌面端设备，请确认处于同一局域网并已开启联动")
+            }
+        }
+    }
+
+    fun pairLanDevice(
+        device: DiscoveredLanDevice,
+        code: String,
+        onFinished: (success: Boolean, error: String?) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = lanLinkClient.pairWithDevice(device, code)
+            result.onSuccess {
+                onFinished(true, null)
+            }.onFailure { err ->
+                onFinished(false, err.message ?: "配对失败")
+            }
+        }
+    }
+
+    fun unpairLanDevice(deviceId: String) {
+        lanLinkClient.unpairDevice(deviceId)
+    }
+
+    fun triggerLanReconnect() {
+        lanLinkClient.triggerReconnectNow()
     }
 }
