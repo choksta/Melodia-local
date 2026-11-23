@@ -212,6 +212,9 @@ def main():
     if tag in remote_tags:
         print("  远端已有该 tag，跳过推送")
     else:
+        # 本地 tag 不存在时先建（annotated tag 不依赖当前检出的分支）
+        if not git("rev-parse", "-q", "--verify", f"refs/tags/{tag}", check=False):
+            git("tag", "-a", tag, "-m", f"Release {version_name}")
         push = run(["git", "push", REMOTE, tag], check=False)
         if push.returncode != 0:
             raise SystemExit("推 tag 失败：\n" + (push.stdout or "") + (push.stderr or ""))
